@@ -16,7 +16,7 @@ class Program
 {
     static void Main()
     {
-        var windowInfo = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "Hello World Sample");
+        var windowInfo = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "My App");
 
         using var window = new ImGuiWindow(windowInfo);
 
