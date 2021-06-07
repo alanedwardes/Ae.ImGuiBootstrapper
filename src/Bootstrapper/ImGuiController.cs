@@ -13,9 +13,9 @@ namespace Ae.ImGuiBootstrapper
     /// A modified version of Veldrid.ImGui's ImGuiRenderer.
     /// Manages input for ImGui and handles rendering ImGui's DrawLists with Veldrid.
     /// </summary>
-    public sealed class ImGuiController : IDisposable
+    internal sealed class ImGuiController : IDisposable
     {
-        private GraphicsDevice _gd;
+        private readonly GraphicsDevice _gd;
 
         // Veldrid objects
         private DeviceBuffer _vertexBuffer;
@@ -39,7 +39,8 @@ namespace Ae.ImGuiBootstrapper
 
         private int _windowWidth;
         private int _windowHeight;
-        private readonly IntPtr _context;
+        private readonly IntPtr _context = ImGui.CreateContext();
+        private readonly ImGuiIOPtr _io;
         private Vector2 _scaleFactor = Vector2.One;
 
         // Image trackers
@@ -58,12 +59,10 @@ namespace Ae.ImGuiBootstrapper
             _windowWidth = width;
             _windowHeight = height;
 
-            _context = ImGui.CreateContext();
-            //ImGui.SetCurrentContext(_context);
-            //var fonts = ImGui.GetIO().Fonts;
-            //ImGui.GetIO().Fonts.AddFontDefault();
+            ImGui.SetCurrentContext(_context);
+            _io = ImGui.GetIO();
 
-            CreateDeviceResources(gd, outputDescription);
+            CreateDeviceResources(outputDescription);
             SetKeyMappings();
 
             SetPerFrameImGuiData(1f / 60f);
@@ -75,23 +74,22 @@ namespace Ae.ImGuiBootstrapper
             _windowHeight = height;
         }
 
-        public void CreateDeviceResources(GraphicsDevice gd, OutputDescription outputDescription)
+        public void CreateDeviceResources(OutputDescription outputDescription)
         {
-            _gd = gd;
-            ResourceFactory factory = gd.ResourceFactory;
+            ResourceFactory factory = _gd.ResourceFactory;
             _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
             _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             _indexBuffer.Name = "ImGui.NET Index Buffer";
-            RecreateFontDeviceTexture(gd);
+            RecreateFontDeviceTexture(_gd);
 
             _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
             _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
 
-            byte[] vertexShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-vertex", ShaderStages.Vertex);
-            byte[] fragmentShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-frag", ShaderStages.Fragment);
-            _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes, gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
-            _fragmentShader = factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
+            byte[] vertexShaderBytes = LoadEmbeddedShaderCode(_gd.ResourceFactory, "imgui-vertex", ShaderStages.Vertex);
+            byte[] fragmentShaderBytes = LoadEmbeddedShaderCode(_gd.ResourceFactory, "imgui-frag", ShaderStages.Fragment);
+            _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
+            _fragmentShader = factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
 
             VertexLayoutDescription[] vertexLayouts = new VertexLayoutDescription[]
             {
@@ -118,7 +116,7 @@ namespace Ae.ImGuiBootstrapper
                 ResourceBindingModel.Default);
             _pipeline = factory.CreateGraphicsPipeline(ref pd);
 
-            _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, gd.PointSampler));
+            _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, _gd.PointSampler));
 
             _fontTextureResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
         }
@@ -236,20 +234,17 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void RecreateFontDeviceTexture(GraphicsDevice gd)
         {
-            ImGui.SetCurrentContext(_context);
-
-            ImGuiIOPtr io = ImGui.GetIO();
             // Build
-            io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
+            _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
             // Store our identifier
-            io.Fonts.SetTexID(_fontAtlasID);
+            _io.Fonts.SetTexID(_fontAtlasID);
 
             _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
             _fontTexture.Name = "ImGui.NET Font Texture";
             gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
             _fontTextureView = gd.ResourceFactory.CreateTextureView(_fontTexture);
 
-            io.Fonts.ClearTexData();
+            _io.Fonts.ClearTexData();
         }
 
         /// <summary>
@@ -260,10 +255,13 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void Render(GraphicsDevice gd, CommandList cl)
         {
+            if (ImGui.GetCurrentContext() != _context)
+            {
+                throw new InvalidOperationException($"The context was changed between the EndFrame and Render calls. Expecting {_context}, got {ImGui.GetCurrentContext()}");
+            }
+
             ImGui.Render();
             RenderImDrawData(ImGui.GetDrawData(), gd, cl);
-
-            ImGui.SetCurrentContext(IntPtr.Zero);
         }
 
         /// <summary>
@@ -271,16 +269,16 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void StartFrame(float deltaSeconds, InputSnapshot snapshot)
         {
-            ImGui.SetCurrentContext(_context);
-
             SetPerFrameImGuiData(deltaSeconds);
             UpdateImGuiInput(snapshot);
 
+            ImGui.SetCurrentContext(_context);
             ImGui.NewFrame();
         }
 
         public void EndFrame()
         {
+            ImGui.SetCurrentContext(_context);
             ImGui.EndFrame();
         }
 
@@ -290,20 +288,13 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         private void SetPerFrameImGuiData(float deltaSeconds)
         {
-            ImGui.SetCurrentContext(_context);
-
-            ImGuiIOPtr io = ImGui.GetIO();
-            io.DisplaySize = new Vector2(_windowWidth / _scaleFactor.X, _windowHeight / _scaleFactor.Y);
-            io.DisplayFramebufferScale = _scaleFactor;
-            io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
+            _io.DisplaySize = new Vector2(_windowWidth / _scaleFactor.X, _windowHeight / _scaleFactor.Y);
+            _io.DisplayFramebufferScale = _scaleFactor;
+            _io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
         }
 
         private void UpdateImGuiInput(InputSnapshot snapshot)
         {
-            ImGui.SetCurrentContext(_context);
-
-            ImGuiIOPtr io = ImGui.GetIO();
-
             Vector2 mousePosition = snapshot.MousePosition / _scaleFactor;
 
             // Determine if any of the mouse buttons were pressed during this snapshot period, even if they are no longer held.
@@ -329,24 +320,24 @@ namespace Ae.ImGuiBootstrapper
                 }
             }
 
-            io.MouseDown[0] = leftPressed || snapshot.IsMouseDown(MouseButton.Left);
-            io.MouseDown[1] = rightPressed || snapshot.IsMouseDown(MouseButton.Right);
-            io.MouseDown[2] = middlePressed || snapshot.IsMouseDown(MouseButton.Middle);
-            io.MousePos = mousePosition;
-            io.MouseWheel = snapshot.WheelDelta;
+            _io.MouseDown[0] = leftPressed || snapshot.IsMouseDown(MouseButton.Left);
+            _io.MouseDown[1] = rightPressed || snapshot.IsMouseDown(MouseButton.Right);
+            _io.MouseDown[2] = middlePressed || snapshot.IsMouseDown(MouseButton.Middle);
+            _io.MousePos = mousePosition;
+            _io.MouseWheel = snapshot.WheelDelta;
 
             IReadOnlyList<char> keyCharPresses = snapshot.KeyCharPresses;
             for (int i = 0; i < keyCharPresses.Count; i++)
             {
                 char c = keyCharPresses[i];
-                io.AddInputCharacter(c);
+                _io.AddInputCharacter(c);
             }
 
             IReadOnlyList<KeyEvent> keyEvents = snapshot.KeyEvents;
             for (int i = 0; i < keyEvents.Count; i++)
             {
                 KeyEvent keyEvent = keyEvents[i];
-                io.KeysDown[(int)keyEvent.Key] = keyEvent.Down;
+                _io.KeysDown[(int)keyEvent.Key] = keyEvent.Down;
                 if (keyEvent.Key == Key.ControlLeft)
                 {
                     _controlDown = keyEvent.Down;
@@ -365,43 +356,38 @@ namespace Ae.ImGuiBootstrapper
                 }
             }
 
-            io.KeyCtrl = _controlDown;
-            io.KeyAlt = _altDown;
-            io.KeyShift = _shiftDown;
-            io.KeySuper = _winKeyDown;
+            _io.KeyCtrl = _controlDown;
+            _io.KeyAlt = _altDown;
+            _io.KeyShift = _shiftDown;
+            _io.KeySuper = _winKeyDown;
         }
 
         private void SetKeyMappings()
         {
-            ImGui.SetCurrentContext(_context);
-
-            ImGuiIOPtr io = ImGui.GetIO();
-            io.KeyMap[(int)ImGuiKey.Tab] = (int)Key.Tab;
-            io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Key.Left;
-            io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Key.Right;
-            io.KeyMap[(int)ImGuiKey.UpArrow] = (int)Key.Up;
-            io.KeyMap[(int)ImGuiKey.DownArrow] = (int)Key.Down;
-            io.KeyMap[(int)ImGuiKey.PageUp] = (int)Key.PageUp;
-            io.KeyMap[(int)ImGuiKey.PageDown] = (int)Key.PageDown;
-            io.KeyMap[(int)ImGuiKey.Home] = (int)Key.Home;
-            io.KeyMap[(int)ImGuiKey.End] = (int)Key.End;
-            io.KeyMap[(int)ImGuiKey.Delete] = (int)Key.Delete;
-            io.KeyMap[(int)ImGuiKey.Backspace] = (int)Key.BackSpace;
-            io.KeyMap[(int)ImGuiKey.Enter] = (int)Key.Enter;
-            io.KeyMap[(int)ImGuiKey.Escape] = (int)Key.Escape;
-            io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
-            io.KeyMap[(int)ImGuiKey.A] = (int)Key.A;
-            io.KeyMap[(int)ImGuiKey.C] = (int)Key.C;
-            io.KeyMap[(int)ImGuiKey.V] = (int)Key.V;
-            io.KeyMap[(int)ImGuiKey.X] = (int)Key.X;
-            io.KeyMap[(int)ImGuiKey.Y] = (int)Key.Y;
-            io.KeyMap[(int)ImGuiKey.Z] = (int)Key.Z;
+            _io.KeyMap[(int)ImGuiKey.Tab] = (int)Key.Tab;
+            _io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Key.Left;
+            _io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Key.Right;
+            _io.KeyMap[(int)ImGuiKey.UpArrow] = (int)Key.Up;
+            _io.KeyMap[(int)ImGuiKey.DownArrow] = (int)Key.Down;
+            _io.KeyMap[(int)ImGuiKey.PageUp] = (int)Key.PageUp;
+            _io.KeyMap[(int)ImGuiKey.PageDown] = (int)Key.PageDown;
+            _io.KeyMap[(int)ImGuiKey.Home] = (int)Key.Home;
+            _io.KeyMap[(int)ImGuiKey.End] = (int)Key.End;
+            _io.KeyMap[(int)ImGuiKey.Delete] = (int)Key.Delete;
+            _io.KeyMap[(int)ImGuiKey.Backspace] = (int)Key.BackSpace;
+            _io.KeyMap[(int)ImGuiKey.Enter] = (int)Key.Enter;
+            _io.KeyMap[(int)ImGuiKey.Escape] = (int)Key.Escape;
+            _io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
+            _io.KeyMap[(int)ImGuiKey.A] = (int)Key.A;
+            _io.KeyMap[(int)ImGuiKey.C] = (int)Key.C;
+            _io.KeyMap[(int)ImGuiKey.V] = (int)Key.V;
+            _io.KeyMap[(int)ImGuiKey.X] = (int)Key.X;
+            _io.KeyMap[(int)ImGuiKey.Y] = (int)Key.Y;
+            _io.KeyMap[(int)ImGuiKey.Z] = (int)Key.Z;
         }
 
         private void RenderImDrawData(ImDrawDataPtr draw_data, GraphicsDevice gd, CommandList cl)
         {
-            ImGui.SetCurrentContext(_context);
-
             uint vertexOffsetInVertices = 0;
             uint indexOffsetInElements = 0;
 
@@ -445,11 +431,10 @@ namespace Ae.ImGuiBootstrapper
             }
 
             // Setup orthographic projection matrix into our constant buffer
-            ImGuiIOPtr io = ImGui.GetIO();
             Matrix4x4 mvp = Matrix4x4.CreateOrthographicOffCenter(
                 0f,
-                io.DisplaySize.X,
-                io.DisplaySize.Y,
+                _io.DisplaySize.X,
+                _io.DisplaySize.Y,
                 0.0f,
                 -1.0f,
                 1.0f);
@@ -461,7 +446,7 @@ namespace Ae.ImGuiBootstrapper
             cl.SetPipeline(_pipeline);
             cl.SetGraphicsResourceSet(0, _mainResourceSet);
 
-            draw_data.ScaleClipRects(io.DisplayFramebufferScale);
+            draw_data.ScaleClipRects(_io.DisplayFramebufferScale);
 
             // Render command lists
             int vtx_offset = 0;

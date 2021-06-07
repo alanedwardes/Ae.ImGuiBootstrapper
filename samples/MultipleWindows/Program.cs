@@ -9,39 +9,28 @@ namespace Ae.ImGuiBootstrapper.Tester
     {
         private static void Main()
         {
-            var windowInfo1 = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "ImGui.NET Sample Program 1");
+            var windowInfo1 = new WindowCreateInfo(128, 128, 1280, 720, WindowState.Normal, "ImGui.NET Sample Program 1");
 
             using var window1 = new ImGuiWindow(windowInfo1);
 
-            var windowInfo2 = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "ImGui.NET Sample Program 2");
+            var windowInfo2 = new WindowCreateInfo(256, 256, 1280, 720, WindowState.Normal, "ImGui.NET Sample Program 2");
 
             using var window2 = new ImGuiWindow(windowInfo2);
 
-            while (true)
+            while (window1.IsOpen || window2.IsOpen)
             {
-                window1.StartFrame();
+                if (window1.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+                {
+                    ImGui.ShowDemoWindow();
+                }
 
-                ImGui.Begin("Wibble1", ImGuiWindowFlags.AlwaysAutoResize);
-                ImGui.Text("Testing1");
-                ImGui.Text($"Mouse position: {ImGui.GetMousePos()}");
-                ImGui.Text($"Mouse position: {ImGui.GetIO().MouseClicked[0]}");
-                ImGui.End();
-
-                ImGui.ShowDemoWindow();
-
-                window1.EndFrame(new Vector3(0.45f, 0.55f, 0.6f));
-
-                window2.StartFrame();
-
-                ImGui.Begin("Wibble2", ImGuiWindowFlags.AlwaysAutoResize);
-                ImGui.Text("Testing2");
-                ImGui.Text($"Mouse position: {ImGui.GetMousePos()}");
-                ImGui.Text($"Mouse position: {ImGui.GetIO().MouseClicked[0]}");
-                ImGui.End();
-
-                ImGui.ShowDemoWindow();
-
-                window2.EndFrame(new Vector3(0.45f, 0.55f, 0.6f));
+                if (window2.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+                {
+                    ImGui.Begin("Window 2", ImGuiWindowFlags.AlwaysAutoResize);
+                    ImGui.Text("Testing2");
+                    ImGui.Text($"Mouse position: {ImGui.GetMousePos()}");
+                    ImGui.End();
+                }
             }
         }
     }

@@ -12,15 +12,11 @@ namespace Ae.ImGuiBootstrapper
     public sealed class ImGuiWindow : IDisposable
     {
         /// <summary>
-        /// Provides access to the SDL window object.
-        /// </summary>
-        public Sdl2Window Window => _window;
-        /// <summary>
-        /// Provides access to the Veldrid <see cref="Veldrid.GraphicsDevice"/>.
+        /// Provides access to the underlying Veldrid <see cref="Veldrid.GraphicsDevice"/>.
         /// </summary>
         public GraphicsDevice GraphicsDevice => _gd;
         /// <summary>
-        /// Provides access to the Veldrid <see cref="Veldrid.ResourceFactory"/>.
+        /// Provides access to the underlying Veldrid <see cref="Veldrid.ResourceFactory"/>.
         /// </summary>
         public ResourceFactory ResourceFactory => _gd.ResourceFactory;
 
@@ -28,6 +24,8 @@ namespace Ae.ImGuiBootstrapper
         private readonly GraphicsDevice _gd;
         private readonly CommandList _cl;
         private readonly ImGuiController _controller;
+        private bool _loopedOnce;
+        private bool _startFrame = true;
 
         /// <summary>
         /// Create a new window on which to render ImgGui elements.
@@ -56,8 +54,6 @@ namespace Ae.ImGuiBootstrapper
         /// <returns></returns>
         public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImGuiBinding(_gd.ResourceFactory, texture);
 
-        private bool _renderedFirstFrame;
-
         /// <summary>
         /// Should be called in a while loop, with ImgGui draw calls in the body of the loop.
         /// </summary>
@@ -65,35 +61,77 @@ namespace Ae.ImGuiBootstrapper
         /// <returns></returns>
         public bool Loop(Vector3 backgroundColor)
         {
-            if (_renderedFirstFrame)
+            if (_loopedOnce)
             {
-                EndFrame(backgroundColor);
+                EndFrameInternal(ref backgroundColor);
             }
 
-            StartFrame();
-            _renderedFirstFrame = true;
-            return _window.Exists;
+            StartFrameInternal();
+            _loopedOnce = true;
+            return IsOpen;
         }
 
+        /// <summary>
+        /// Determines whether the window is open or has been closed.
+        /// </summary>
+        public bool IsOpen => _window.Exists;
+
+        /// <summary>
+        /// Start a new frame. This call should be followed by ImgGui draw calls.
+        /// </summary>
         public void StartFrame()
+        {
+            if (!_startFrame)
+            {
+                throw new InvalidOperationException("EndFrame must be called before StartFrame can be called");
+            }
+
+            if (_loopedOnce)
+            {
+                throw new InvalidOperationException("StartFrame cannot be used with Loop");
+            }
+
+            StartFrameInternal();
+        }
+
+        private void StartFrameInternal()
         {
             InputSnapshot snapshot = _window.PumpEvents();
 
-            if (!_window.Exists)
+            if (!IsOpen)
             {
                 return;
             }
 
             _controller.StartFrame(1f / 60f, snapshot);
+            _startFrame = false;
         }
 
+        /// <summary>
+        /// End the current frame after all ImGui draw calls.
+        /// </summary>
         public void EndFrame(Vector3 backgroundColor)
         {
-            if (!_window.Exists)
+            if (!IsOpen)
             {
                 return;
             }
 
+            if (_startFrame)
+            {
+                throw new InvalidOperationException("StartFrame must be called before EndFrame can be called");
+            }
+
+            if (_loopedOnce)
+            {
+                throw new InvalidOperationException("EndFrame cannot be used with Loop");
+            }
+
+            EndFrameInternal(ref backgroundColor);
+        }
+
+        private void EndFrameInternal(ref Vector3 backgroundColor)
+        {
             _controller.EndFrame();
 
             _cl.Begin();
@@ -103,6 +141,8 @@ namespace Ae.ImGuiBootstrapper
             _cl.End();
             _gd.SubmitCommands(_cl);
             _gd.SwapBuffers(_gd.MainSwapchain);
+
+            _startFrame = true;
         }
 
         /// <summary>
