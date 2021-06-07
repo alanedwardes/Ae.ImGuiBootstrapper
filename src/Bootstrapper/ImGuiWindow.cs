@@ -11,6 +11,19 @@ namespace Ae.ImGuiBootstrapper
     /// </summary>
     public sealed class ImGuiWindow : IDisposable
     {
+        /// <summary>
+        /// Provides access to the SDL window object.
+        /// </summary>
+        public Sdl2Window Window => _window;
+        /// <summary>
+        /// Provides access to the Veldrid <see cref="Veldrid.GraphicsDevice"/>.
+        /// </summary>
+        public GraphicsDevice GraphicsDevice => _gd;
+        /// <summary>
+        /// Provides access to the Veldrid <see cref="Veldrid.ResourceFactory"/>.
+        /// </summary>
+        public ResourceFactory ResourceFactory => _gd.ResourceFactory;
+
         private readonly Sdl2Window _window;
         private readonly GraphicsDevice _gd;
         private readonly CommandList _cl;
@@ -36,6 +49,13 @@ namespace Ae.ImGuiBootstrapper
             _controller = new ImGuiController(_gd, _gd.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height);
         }
 
+        /// <summary>
+        /// Binds the specified <see cref="Texture"/> to the graphics pipeline and return its <see cref="IntPtr"/> ID for use in ImGui.
+        /// </summary>
+        /// <param name="texture"></param>
+        /// <returns></returns>
+        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImGuiBinding(_gd.ResourceFactory, texture);
+
         private bool _renderedFirstFrame;
 
         /// <summary>
@@ -55,7 +75,7 @@ namespace Ae.ImGuiBootstrapper
             return _window.Exists;
         }
 
-        private void StartFrame()
+        public void StartFrame()
         {
             InputSnapshot snapshot = _window.PumpEvents();
 
@@ -67,7 +87,7 @@ namespace Ae.ImGuiBootstrapper
             _controller.Update(1f / 60f, snapshot);
         }
 
-        private void EndFrame(Vector3 backgroundColor)
+        public void EndFrame(Vector3 backgroundColor)
         {
             if (!_window.Exists)
             {

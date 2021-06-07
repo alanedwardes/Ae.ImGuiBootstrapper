@@ -13,8 +13,10 @@ namespace Ae.ImGuiBootstrapper
     /// A modified version of Veldrid.ImGui's ImGuiRenderer.
     /// Manages input for ImGui and handles rendering ImGui's DrawLists with Veldrid.
     /// </summary>
-    internal sealed class ImGuiController : IDisposable
+    public sealed class ImGuiController : IDisposable
     {
+        public static bool Window2 { get; set; }
+
         private GraphicsDevice _gd;
         private bool _frameBegun;
 
@@ -43,10 +45,8 @@ namespace Ae.ImGuiBootstrapper
         private Vector2 _scaleFactor = Vector2.One;
 
         // Image trackers
-        private readonly Dictionary<TextureView, ResourceSetInfo> _setsByView
-            = new Dictionary<TextureView, ResourceSetInfo>();
-        private readonly Dictionary<Texture, TextureView> _autoViewsByTexture
-            = new Dictionary<Texture, TextureView>();
+        private readonly Dictionary<TextureView, ResourceSetInfo> _setsByView = new Dictionary<TextureView, ResourceSetInfo>();
+        private readonly Dictionary<Texture, TextureView> _autoViewsByTexture = new Dictionary<Texture, TextureView>();
         private readonly Dictionary<IntPtr, ResourceSetInfo> _viewsById = new Dictionary<IntPtr, ResourceSetInfo>();
         private readonly List<IDisposable> _ownedResources = new List<IDisposable>();
         private int _lastAssignedID = 100;
@@ -128,9 +128,7 @@ namespace Ae.ImGuiBootstrapper
                 ResourceBindingModel.Default);
             _pipeline = factory.CreateGraphicsPipeline(ref pd);
 
-            _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout,
-                _projMatrixBuffer,
-                gd.PointSampler));
+            _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, gd.PointSampler));
 
             _fontTextureResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
         }
@@ -250,32 +248,13 @@ namespace Ae.ImGuiBootstrapper
         {
             ImGuiIOPtr io = ImGui.GetIO();
             // Build
-            IntPtr pixels;
-            int width, height, bytesPerPixel;
-            io.Fonts.GetTexDataAsRGBA32(out pixels, out width, out height, out bytesPerPixel);
+            io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
             // Store our identifier
             io.Fonts.SetTexID(_fontAtlasID);
 
-            _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
-                (uint)width,
-                (uint)height,
-                1,
-                1,
-                PixelFormat.R8_G8_B8_A8_UNorm,
-                TextureUsage.Sampled));
+            _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
             _fontTexture.Name = "ImGui.NET Font Texture";
-            gd.UpdateTexture(
-                _fontTexture,
-                pixels,
-                (uint)(bytesPerPixel * width * height),
-                0,
-                0,
-                0,
-                (uint)width,
-                (uint)height,
-                1,
-                0,
-                0);
+            gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
             _fontTextureView = gd.ResourceFactory.CreateTextureView(_fontTexture);
 
             io.Fonts.ClearTexData();
@@ -311,6 +290,7 @@ namespace Ae.ImGuiBootstrapper
             UpdateImGuiInput(snapshot);
 
             _frameBegun = true;
+
             ImGui.NewFrame();
         }
 
@@ -321,9 +301,7 @@ namespace Ae.ImGuiBootstrapper
         private void SetPerFrameImGuiData(float deltaSeconds)
         {
             ImGuiIOPtr io = ImGui.GetIO();
-            io.DisplaySize = new Vector2(
-                _windowWidth / _scaleFactor.X,
-                _windowHeight / _scaleFactor.Y);
+            io.DisplaySize = new Vector2(_windowWidth / _scaleFactor.X, _windowHeight / _scaleFactor.Y);
             io.DisplayFramebufferScale = _scaleFactor;
             io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
         }
@@ -332,7 +310,7 @@ namespace Ae.ImGuiBootstrapper
         {
             ImGuiIOPtr io = ImGui.GetIO();
 
-            Vector2 mousePosition = snapshot.MousePosition;
+            Vector2 mousePosition = snapshot.MousePosition / _scaleFactor;
 
             // Determine if any of the mouse buttons were pressed during this snapshot period, even if they are no longer held.
             bool leftPressed = false;
@@ -514,13 +492,7 @@ namespace Ae.ImGuiBootstrapper
                             }
                         }
 
-                        cl.SetScissorRect(
-                            0,
-                            (uint)pcmd.ClipRect.X,
-                            (uint)pcmd.ClipRect.Y,
-                            (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X),
-                            (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y));
-
+                        cl.SetScissorRect(0, (uint)pcmd.ClipRect.X, (uint)pcmd.ClipRect.Y, (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X), (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y));
                         cl.DrawIndexed(pcmd.ElemCount, 1, (uint)idx_offset, vtx_offset, 0);
                     }
 

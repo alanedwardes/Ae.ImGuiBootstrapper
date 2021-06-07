@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Ae.ImGuiBootstrapper\Ae.ImGuiBootstrapper.csproj" />
+      <ProjectReference Include="..\..\src\Bootstrapper\Ae.ImGuiBootstrapper.csproj" />
     </ItemGroup>
 
 </Project>
