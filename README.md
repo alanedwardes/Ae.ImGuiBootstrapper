@@ -1,6 +1,6 @@
 # Ae.ImGuiBootstrapper
 
-![.NET Core](https://github.com/alanedwardes/Ae.ImGuiBootstrapper/workflows/.NET/badge.svg?branch=main)
+![.NET Core](https://github.com/alanedwardes/Ae.ImGuiBootstrapper/workflows/.NET/badge.svg?branch=master)
 
 Provides a simple interface to create ImGui windows on Windows, macOS, Linux.
 
