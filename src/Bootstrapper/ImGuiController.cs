@@ -414,30 +414,16 @@ namespace Ae.ImGuiBootstrapper
             {
                 ImDrawListPtr cmd_list = draw_data.CmdListsRange[i];
 
-                cl.UpdateBuffer(
-                    _vertexBuffer,
-                    vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(),
-                    cmd_list.VtxBuffer.Data,
-                    (uint)(cmd_list.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
+                cl.UpdateBuffer(_vertexBuffer, vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(), cmd_list.VtxBuffer.Data, (uint)(cmd_list.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
 
-                cl.UpdateBuffer(
-                    _indexBuffer,
-                    indexOffsetInElements * sizeof(ushort),
-                    cmd_list.IdxBuffer.Data,
-                    (uint)(cmd_list.IdxBuffer.Size * sizeof(ushort)));
+                cl.UpdateBuffer(_indexBuffer, indexOffsetInElements * sizeof(ushort), cmd_list.IdxBuffer.Data, (uint)(cmd_list.IdxBuffer.Size * sizeof(ushort)));
 
                 vertexOffsetInVertices += (uint)cmd_list.VtxBuffer.Size;
                 indexOffsetInElements += (uint)cmd_list.IdxBuffer.Size;
             }
 
             // Setup orthographic projection matrix into our constant buffer
-            Matrix4x4 mvp = Matrix4x4.CreateOrthographicOffCenter(
-                0f,
-                _io.DisplaySize.X,
-                _io.DisplaySize.Y,
-                0.0f,
-                -1.0f,
-                1.0f);
+            Matrix4x4 mvp = Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f);
 
             _gd.UpdateBuffer(_projMatrixBuffer, 0, ref mvp);
 
