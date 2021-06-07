@@ -15,10 +15,7 @@ namespace Ae.ImGuiBootstrapper
     /// </summary>
     public sealed class ImGuiController : IDisposable
     {
-        public static bool Window2 { get; set; }
-
         private GraphicsDevice _gd;
-        private bool _frameBegun;
 
         // Veldrid objects
         private DeviceBuffer _vertexBuffer;
@@ -42,6 +39,7 @@ namespace Ae.ImGuiBootstrapper
 
         private int _windowWidth;
         private int _windowHeight;
+        private readonly IntPtr _context;
         private Vector2 _scaleFactor = Vector2.One;
 
         // Image trackers
@@ -60,29 +58,21 @@ namespace Ae.ImGuiBootstrapper
             _windowWidth = width;
             _windowHeight = height;
 
-            IntPtr context = ImGui.CreateContext();
-            ImGui.SetCurrentContext(context);
-            var fonts = ImGui.GetIO().Fonts;
-            ImGui.GetIO().Fonts.AddFontDefault();
+            _context = ImGui.CreateContext();
+            //ImGui.SetCurrentContext(_context);
+            //var fonts = ImGui.GetIO().Fonts;
+            //ImGui.GetIO().Fonts.AddFontDefault();
 
             CreateDeviceResources(gd, outputDescription);
             SetKeyMappings();
 
             SetPerFrameImGuiData(1f / 60f);
-
-            ImGui.NewFrame();
-            _frameBegun = true;
         }
 
         public void WindowResized(int width, int height)
         {
             _windowWidth = width;
             _windowHeight = height;
-        }
-
-        public void DestroyDeviceObjects()
-        {
-            Dispose();
         }
 
         public void CreateDeviceResources(GraphicsDevice gd, OutputDescription outputDescription)
@@ -246,6 +236,8 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void RecreateFontDeviceTexture(GraphicsDevice gd)
         {
+            ImGui.SetCurrentContext(_context);
+
             ImGuiIOPtr io = ImGui.GetIO();
             // Build
             io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
@@ -268,30 +260,28 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void Render(GraphicsDevice gd, CommandList cl)
         {
-            if (_frameBegun)
-            {
-                _frameBegun = false;
-                ImGui.Render();
-                RenderImDrawData(ImGui.GetDrawData(), gd, cl);
-            }
+            ImGui.Render();
+            RenderImDrawData(ImGui.GetDrawData(), gd, cl);
+
+            ImGui.SetCurrentContext(IntPtr.Zero);
         }
 
         /// <summary>
         /// Updates ImGui input and IO configuration state.
         /// </summary>
-        public void Update(float deltaSeconds, InputSnapshot snapshot)
+        public void StartFrame(float deltaSeconds, InputSnapshot snapshot)
         {
-            if (_frameBegun)
-            {
-                ImGui.Render();
-            }
+            ImGui.SetCurrentContext(_context);
 
             SetPerFrameImGuiData(deltaSeconds);
             UpdateImGuiInput(snapshot);
 
-            _frameBegun = true;
-
             ImGui.NewFrame();
+        }
+
+        public void EndFrame()
+        {
+            ImGui.EndFrame();
         }
 
         /// <summary>
@@ -300,6 +290,8 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         private void SetPerFrameImGuiData(float deltaSeconds)
         {
+            ImGui.SetCurrentContext(_context);
+
             ImGuiIOPtr io = ImGui.GetIO();
             io.DisplaySize = new Vector2(_windowWidth / _scaleFactor.X, _windowHeight / _scaleFactor.Y);
             io.DisplayFramebufferScale = _scaleFactor;
@@ -308,6 +300,8 @@ namespace Ae.ImGuiBootstrapper
 
         private void UpdateImGuiInput(InputSnapshot snapshot)
         {
+            ImGui.SetCurrentContext(_context);
+
             ImGuiIOPtr io = ImGui.GetIO();
 
             Vector2 mousePosition = snapshot.MousePosition / _scaleFactor;
@@ -377,8 +371,10 @@ namespace Ae.ImGuiBootstrapper
             io.KeySuper = _winKeyDown;
         }
 
-        private static void SetKeyMappings()
+        private void SetKeyMappings()
         {
+            ImGui.SetCurrentContext(_context);
+
             ImGuiIOPtr io = ImGui.GetIO();
             io.KeyMap[(int)ImGuiKey.Tab] = (int)Key.Tab;
             io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Key.Left;
@@ -404,6 +400,8 @@ namespace Ae.ImGuiBootstrapper
 
         private void RenderImDrawData(ImDrawDataPtr draw_data, GraphicsDevice gd, CommandList cl)
         {
+            ImGui.SetCurrentContext(_context);
+
             uint vertexOffsetInVertices = 0;
             uint indexOffsetInElements = 0;
 

@@ -84,7 +84,7 @@ namespace Ae.ImGuiBootstrapper
                 return;
             }
 
-            _controller.Update(1f / 60f, snapshot);
+            _controller.StartFrame(1f / 60f, snapshot);
         }
 
         public void EndFrame(Vector3 backgroundColor)
@@ -93,6 +93,8 @@ namespace Ae.ImGuiBootstrapper
             {
                 return;
             }
+
+            _controller.EndFrame();
 
             _cl.Begin();
             _cl.SetFramebuffer(_gd.MainSwapchain.Framebuffer);

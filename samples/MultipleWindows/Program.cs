@@ -19,8 +19,6 @@ namespace Ae.ImGuiBootstrapper.Tester
 
             while (true)
             {
-                ImGuiController.Window2 = false;
-
                 window1.StartFrame();
 
                 ImGui.Begin("Wibble1", ImGuiWindowFlags.AlwaysAutoResize);
@@ -29,9 +27,9 @@ namespace Ae.ImGuiBootstrapper.Tester
                 ImGui.Text($"Mouse position: {ImGui.GetIO().MouseClicked[0]}");
                 ImGui.End();
 
-                window1.EndFrame(new Vector3(0.45f, 0.55f, 0.6f));
+                ImGui.ShowDemoWindow();
 
-                ImGuiController.Window2 = true;
+                window1.EndFrame(new Vector3(0.45f, 0.55f, 0.6f));
 
                 window2.StartFrame();
 
@@ -40,6 +38,8 @@ namespace Ae.ImGuiBootstrapper.Tester
                 ImGui.Text($"Mouse position: {ImGui.GetMousePos()}");
                 ImGui.Text($"Mouse position: {ImGui.GetIO().MouseClicked[0]}");
                 ImGui.End();
+
+                ImGui.ShowDemoWindow();
 
                 window2.EndFrame(new Vector3(0.45f, 0.55f, 0.6f));
             }
