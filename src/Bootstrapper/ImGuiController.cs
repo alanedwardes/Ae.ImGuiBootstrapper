@@ -31,7 +31,7 @@ namespace Ae.ImGuiBootstrapper
         private ResourceSet _mainResourceSet;
         private ResourceSet _fontTextureResourceSet;
 
-        private IntPtr _fontAtlasID = (IntPtr)1;
+        private readonly IntPtr _fontAtlasID = (IntPtr)1;
         private bool _controlDown;
         private bool _shiftDown;
         private bool _altDown;
@@ -229,19 +229,19 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Recreates the device texture used to render text.
         /// </summary>
-        public void RecreateFontDeviceTexture(GraphicsDevice gd)
+        public void RecreateFontDeviceTexture()
         {
             // Build
             _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
             // Store our identifier
             _io.Fonts.SetTexID(_fontAtlasID);
 
-            _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
+            _fontTexture = _gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
             _fontTexture.Name = "ImGui.NET Font Texture";
-            gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
-            _fontTextureView = gd.ResourceFactory.CreateTextureView(_fontTexture);
+            _gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
+            _fontTextureView = _gd.ResourceFactory.CreateTextureView(_fontTexture);
 
-            _fontTextureResourceSet = gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
+            _fontTextureResourceSet = _gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
 
             _io.Fonts.ClearTexData();
         }
@@ -252,15 +252,16 @@ namespace Ae.ImGuiBootstrapper
         /// or index data has increased beyond the capacity of the existing buffers.
         /// A <see cref="CommandList"/> is needed to submit drawing and resource update commands.
         /// </summary>
-        public void Render(GraphicsDevice gd, CommandList cl)
+        public void Render(CommandList cl)
         {
-            if (ImGui.GetCurrentContext() != _context)
+            var currentContext = ImGui.GetCurrentContext();
+            if (currentContext != _context)
             {
-                throw new InvalidOperationException($"The context was changed between the EndFrame and Render calls. Expecting {_context}, got {ImGui.GetCurrentContext()}");
+                throw new InvalidOperationException($"The context was changed between the EndFrame and Render calls. Expecting {_context}, got {currentContext}");
             }
 
             ImGui.Render();
-            RenderImDrawData(ImGui.GetDrawData(), gd, cl);
+            RenderImDrawData(ImGui.GetDrawData(), cl);
         }
 
         /// <summary>
@@ -385,7 +386,7 @@ namespace Ae.ImGuiBootstrapper
             _io.KeyMap[(int)ImGuiKey.Z] = (int)Key.Z;
         }
 
-        private void RenderImDrawData(ImDrawDataPtr draw_data, GraphicsDevice gd, CommandList cl)
+        private void RenderImDrawData(ImDrawDataPtr draw_data, CommandList cl)
         {
             uint vertexOffsetInVertices = 0;
             uint indexOffsetInElements = 0;
@@ -398,15 +399,15 @@ namespace Ae.ImGuiBootstrapper
             uint totalVBSize = (uint)(draw_data.TotalVtxCount * Unsafe.SizeOf<ImDrawVert>());
             if (totalVBSize > _vertexBuffer.SizeInBytes)
             {
-                gd.DisposeWhenIdle(_vertexBuffer);
-                _vertexBuffer = gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVBSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+                _gd.DisposeWhenIdle(_vertexBuffer);
+                _vertexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVBSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             }
 
             uint totalIBSize = (uint)(draw_data.TotalIdxCount * sizeof(ushort));
             if (totalIBSize > _indexBuffer.SizeInBytes)
             {
-                gd.DisposeWhenIdle(_indexBuffer);
-                _indexBuffer = gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+                _gd.DisposeWhenIdle(_indexBuffer);
+                _indexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             }
 
             for (int i = 0; i < draw_data.CmdListsCount; i++)

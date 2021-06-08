@@ -99,18 +99,16 @@ namespace Ae.ImGuiBootstrapper
         {
             if (!_resourcesCreated)
             {
-                _controller.RecreateFontDeviceTexture(_gd);
+                _controller.RecreateFontDeviceTexture();
                 _resourcesCreated = true;
             }
-
-            InputSnapshot snapshot = _window.PumpEvents();
 
             if (!IsOpen)
             {
                 return;
             }
 
-            _controller.StartFrame(1f / 60f, snapshot);
+            _controller.StartFrame(1f / 60f, _window.PumpEvents());
             _startFrame = false;
         }
 
@@ -144,7 +142,7 @@ namespace Ae.ImGuiBootstrapper
             _cl.Begin();
             _cl.SetFramebuffer(_gd.MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, new RgbaFloat(backgroundColor.X, backgroundColor.Y, backgroundColor.Z, 1f));
-            _controller.Render(_gd, _cl);
+            _controller.Render(_cl);
             _cl.End();
             _gd.SubmitCommands(_cl);
             _gd.SwapBuffers(_gd.MainSwapchain);
