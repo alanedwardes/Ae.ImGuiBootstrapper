@@ -26,6 +26,7 @@ namespace Ae.ImGuiBootstrapper
         private readonly ImGuiController _controller;
         private bool _loopedOnce;
         private bool _startFrame = true;
+        private bool _resourcesCreated;
 
         /// <summary>
         /// Create a new window on which to render ImgGui elements.
@@ -44,7 +45,7 @@ namespace Ae.ImGuiBootstrapper
             };
 
             _cl = _gd.ResourceFactory.CreateCommandList();
-            _controller = new ImGuiController(_gd, _gd.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height);
+            _controller = new ImGuiController(_gd, _window.Width, _window.Height);
         }
 
         /// <summary>
@@ -96,6 +97,12 @@ namespace Ae.ImGuiBootstrapper
 
         private void StartFrameInternal()
         {
+            if (!_resourcesCreated)
+            {
+                _controller.RecreateFontDeviceTexture(_gd);
+                _resourcesCreated = true;
+            }
+
             InputSnapshot snapshot = _window.PumpEvents();
 
             if (!IsOpen)

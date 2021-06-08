@@ -53,7 +53,7 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Constructs a new ImGuiController.
         /// </summary>
-        public ImGuiController(GraphicsDevice gd, OutputDescription outputDescription, int width, int height)
+        public ImGuiController(GraphicsDevice gd, int width, int height)
         {
             _gd = gd;
             _windowWidth = width;
@@ -62,7 +62,7 @@ namespace Ae.ImGuiBootstrapper
             ImGui.SetCurrentContext(_context);
             _io = ImGui.GetIO();
 
-            CreateDeviceResources(outputDescription);
+            CreateDeviceResources();
             SetKeyMappings();
 
             SetPerFrameImGuiData(1f / 60f);
@@ -74,14 +74,13 @@ namespace Ae.ImGuiBootstrapper
             _windowHeight = height;
         }
 
-        public void CreateDeviceResources(OutputDescription outputDescription)
+        public void CreateDeviceResources()
         {
             ResourceFactory factory = _gd.ResourceFactory;
             _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
             _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             _indexBuffer.Name = "ImGui.NET Index Buffer";
-            RecreateFontDeviceTexture(_gd);
 
             _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
             _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
@@ -112,13 +111,11 @@ namespace Ae.ImGuiBootstrapper
                 PrimitiveTopology.TriangleList,
                 new ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
                 new ResourceLayout[] { _layout, _textureLayout },
-                outputDescription,
+                _gd.MainSwapchain.Framebuffer.OutputDescription,
                 ResourceBindingModel.Default);
             _pipeline = factory.CreateGraphicsPipeline(ref pd);
 
             _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, _gd.PointSampler));
-
-            _fontTextureResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
         }
 
         /// <summary>
@@ -228,7 +225,7 @@ namespace Ae.ImGuiBootstrapper
                 return ret;
             }
         }
-
+        
         /// <summary>
         /// Recreates the device texture used to render text.
         /// </summary>
@@ -243,6 +240,8 @@ namespace Ae.ImGuiBootstrapper
             _fontTexture.Name = "ImGui.NET Font Texture";
             gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
             _fontTextureView = gd.ResourceFactory.CreateTextureView(_fontTexture);
+
+            _fontTextureResourceSet = gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
 
             _io.Fonts.ClearTexData();
         }
