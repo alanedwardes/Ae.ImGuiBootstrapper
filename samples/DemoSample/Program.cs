@@ -3,7 +3,7 @@ using System.Numerics;
 using Veldrid;
 using Veldrid.StartupUtilities;
 
-namespace Ae.ImGuiBootstrapper.Tester
+namespace Ae.ImGuiBootstrapper.DemoSample
 {
     internal static class Program
     {

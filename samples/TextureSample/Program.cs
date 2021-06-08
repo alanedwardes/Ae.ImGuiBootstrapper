@@ -4,7 +4,7 @@ using Veldrid;
 using Veldrid.ImageSharp;
 using Veldrid.StartupUtilities;
 
-namespace Ae.ImGuiBootstrapper.Tester
+namespace Ae.ImGuiBootstrapper.TextureSample
 {
     internal static class Program
     {
