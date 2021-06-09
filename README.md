@@ -11,13 +11,15 @@ Provides a simple interface to create ImGui windows on Windows, macOS, Linux.
 The below code will render a simple window containing the text "Hello World".
 
 ```csharp
+using Ae.ImGuiBootstrapper;
+using ImGuiNET;
+using System.Numerics;
+
 class Program
 {
     static void Main()
     {
-        var windowInfo = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "My App");
-
-        using var window = new ImGuiWindow(windowInfo);
+        using var window = new ImGuiWindow("My App");
 
         while (window.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
         {

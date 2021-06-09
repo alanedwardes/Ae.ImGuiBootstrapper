@@ -1,7 +1,5 @@
 ﻿using ImGuiNET;
 using System.Numerics;
-using Veldrid;
-using Veldrid.StartupUtilities;
 
 namespace Ae.ImGuiBootstrapper.DemoSample
 {
@@ -12,9 +10,7 @@ namespace Ae.ImGuiBootstrapper.DemoSample
     {
         private static void Main()
         {
-            var windowInfo = new WindowCreateInfo(50, 50, 1280, 720, WindowState.Normal, "ImGui.NET Sample Program");
-
-            using var window = new ImGuiWindow(windowInfo);
+            using var window = new ImGuiWindow("ImGui.NET Sample Program");
 
             // UI state
             float _f = 0.0f;

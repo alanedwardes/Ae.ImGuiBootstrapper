@@ -31,16 +31,11 @@ namespace Ae.ImGuiBootstrapper
         private bool _startFrame = true;
         private bool _resourcesCreated;
 
-        /// <summary>
-        /// Create a new window on which to render ImgGui elements.
-        /// </summary>
-        /// <param name="windowCreateInfo"></param>
-        public ImGuiWindow(WindowCreateInfo windowCreateInfo)
+        private ImGuiWindow((Sdl2Window, GraphicsDevice) windowAndGraphicsDevice)
         {
-            var deviceOptions = new GraphicsDeviceOptions(true, null, true, ResourceBindingModel.Improved, true, true);
+            _window = windowAndGraphicsDevice.Item1;
+            _gd = windowAndGraphicsDevice.Item2;
 
-            VeldridStartup.CreateWindowAndGraphicsDevice(windowCreateInfo, deviceOptions, out _window, out _gd);
-            
             _window.Resized += () =>
             {
                 _gd.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
@@ -49,6 +44,52 @@ namespace Ae.ImGuiBootstrapper
 
             _cl = _gd.ResourceFactory.CreateCommandList();
             _controller = new ImGuiController(_gd, _window.Width, _window.Height);
+        }
+
+        /// <summary>
+        /// Create a new window using the specified <see cref="Sdl2Window"/> and <see cref="Veldrid.GraphicsDevice"/>.
+        /// </summary>
+        /// <param name="window"></param>
+        /// <param name="graphicsDevice"></param>
+        public ImGuiWindow(Sdl2Window window, GraphicsDevice graphicsDevice) : this((window, graphicsDevice))
+        {
+        }
+
+        /// <summary>
+        /// Create a new window on which to render ImgGui elements.
+        /// </summary>
+        /// <param name="windowTitle"></param>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        public ImGuiWindow(string windowTitle, int x = 50, int y = 50, int width = 1280, int height = 720) : this(new WindowCreateInfo(x, y, width, height, WindowState.Normal, windowTitle))
+        {
+        }
+
+        /// <summary>
+        /// Create a new window on which to render ImgGui elements using the specified <see cref="WindowCreateInfo"/>.
+        /// </summary>
+        /// <param name="windowCreateInfo"></param>
+        public ImGuiWindow(WindowCreateInfo windowCreateInfo) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, CreateDefaultDeviceOptions()))
+        {
+        }
+
+        /// <summary>
+        /// Create a new window on which to render ImgGui elements.
+        /// </summary>
+        /// <param name="windowCreateInfo"></param>
+        /// <param name="graphicsDeviceOptions"></param>
+        public ImGuiWindow(WindowCreateInfo windowCreateInfo, GraphicsDeviceOptions graphicsDeviceOptions) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, graphicsDeviceOptions))
+        {
+        }
+
+        private static GraphicsDeviceOptions CreateDefaultDeviceOptions() => new GraphicsDeviceOptions(false, null, true, ResourceBindingModel.Improved, true, true);
+
+        private static (Sdl2Window, GraphicsDevice) CreateWindowAndGraphicsDevice(WindowCreateInfo windowCreateInfo, GraphicsDeviceOptions graphicsDeviceOptions)
+        {
+            VeldridStartup.CreateWindowAndGraphicsDevice(windowCreateInfo, graphicsDeviceOptions, out var window, out var gd);
+            return (window, gd);
         }
 
         /// <summary>
