@@ -23,7 +23,9 @@ namespace Ae.ImGuiBootstrapper.TextureSample
 
             var textureId = window.BindTexture(texture);
 
-            while (window.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+            var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
+
+            while (window.Loop(ref backgroundColor))
             {
                 ImGui.Begin("Test Window", ImGuiWindowFlags.AlwaysAutoResize);
                 ImGui.Image(textureId, new Vector2(128));

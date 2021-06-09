@@ -26,7 +26,9 @@ namespace Ae.ImGuiBootstrapper.DemoSample
             uint s_tab_bar_flags = (uint)ImGuiTabBarFlags.Reorderable;
             bool[] s_opened = { true, true, true, true }; // Persistent user state
 
-            while (window.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+            var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
+
+            while (window.Loop(ref backgroundColor))
             {
                 // Demo code adapted from the official Dear ImGui demo program:
                 // https://github.com/ocornut/imgui/blob/master/examples/example_win32_directx11/main.cpp#L172

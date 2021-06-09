@@ -60,7 +60,7 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         /// <param name="backgroundColor"></param>
         /// <returns></returns>
-        public bool Loop(Vector3 backgroundColor)
+        public bool Loop(ref Vector3 backgroundColor)
         {
             if (_loopedOnce)
             {
@@ -115,7 +115,7 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// End the current frame after all ImGui draw calls.
         /// </summary>
-        public void EndFrame(Vector3 backgroundColor)
+        public void EndFrame(ref Vector3 backgroundColor)
         {
             if (!IsOpen)
             {

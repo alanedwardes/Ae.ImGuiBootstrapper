@@ -20,7 +20,9 @@ namespace Ae.ImGuiBootstrapper.FontsSample
             io.Fonts.AddFontFromFileTTF(@"NotoSans.ttf", 18);
             io.Fonts.AddFontFromFileTTF(@"TenorSans.ttf", 18);
 
-            while (window.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+            var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
+
+            while (window.Loop(ref backgroundColor))
             {
                 ImGui.ShowStyleEditor();
             }

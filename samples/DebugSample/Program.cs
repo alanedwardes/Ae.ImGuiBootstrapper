@@ -21,7 +21,9 @@ namespace Ae.ImGuiBootstrapper.DebugSample
 
             Console.WriteLine("Entering loop");
 
-            while (window.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+            var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
+
+            while (window.Loop(ref backgroundColor))
             {
                 ImGui.ShowDemoWindow();
             }

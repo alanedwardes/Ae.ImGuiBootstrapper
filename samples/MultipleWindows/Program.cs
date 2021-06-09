@@ -22,12 +22,14 @@ namespace Ae.ImGuiBootstrapper.MultipleWindows
 
             while (window1.IsOpen || window2.IsOpen)
             {
-                if (window1.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+                var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
+
+                while (window1.Loop(ref backgroundColor))
                 {
                     ImGui.ShowDemoWindow();
                 }
 
-                if (window2.Loop(new Vector3(0.45f, 0.55f, 0.6f)))
+                while (window2.Loop(ref backgroundColor))
                 {
                     ImGui.Begin("Window 2", ImGuiWindowFlags.AlwaysAutoResize);
                     ImGui.Text("Testing2");
