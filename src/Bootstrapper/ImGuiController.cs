@@ -370,21 +370,21 @@ namespace Ae.ImGuiBootstrapper
             _io.KeyMap[(int)ImGuiKey.Z] = (int)Key.Z;
         }
 
-        private void RenderImDrawData(ImDrawDataPtr draw_data, CommandList cl)
+        private void RenderImDrawData(ImDrawDataPtr drawData, CommandList cl)
         {
-            if (draw_data.CmdListsCount == 0)
+            if (drawData.CmdListsCount == 0)
             {
                 return;
             }
 
-            uint totalVBSize = (uint)(draw_data.TotalVtxCount * Unsafe.SizeOf<ImDrawVert>());
+            uint totalVBSize = (uint)(drawData.TotalVtxCount * Unsafe.SizeOf<ImDrawVert>());
             if (totalVBSize > _vertexBuffer.SizeInBytes)
             {
                 _gd.DisposeWhenIdle(_vertexBuffer);
                 _vertexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVBSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             }
 
-            uint totalIBSize = (uint)(draw_data.TotalIdxCount * sizeof(ushort));
+            uint totalIBSize = (uint)(drawData.TotalIdxCount * sizeof(ushort));
             if (totalIBSize > _indexBuffer.SizeInBytes)
             {
                 _gd.DisposeWhenIdle(_indexBuffer);
@@ -393,9 +393,9 @@ namespace Ae.ImGuiBootstrapper
 
             uint vertexOffsetInVertices = 0;
             uint indexOffsetInElements = 0;
-            for (int i = 0; i < draw_data.CmdListsCount; i++)
+            for (int i = 0; i < drawData.CmdListsCount; i++)
             {
-                ImDrawListPtr cmd_list = draw_data.CmdListsRange[i];
+                ImDrawListPtr cmd_list = drawData.CmdListsRange[i];
 
                 cl.UpdateBuffer(_vertexBuffer, vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(), cmd_list.VtxBuffer.Data, (uint)(cmd_list.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
 
@@ -410,14 +410,14 @@ namespace Ae.ImGuiBootstrapper
             cl.SetPipeline(_pipeline);
             cl.SetGraphicsResourceSet(0, _mainResourceSet);
 
-            draw_data.ScaleClipRects(_io.DisplayFramebufferScale);
+            drawData.ScaleClipRects(_io.DisplayFramebufferScale);
 
             // Render command lists
             int vtx_offset = 0;
             int idx_offset = 0;
-            for (int n = 0; n < draw_data.CmdListsCount; n++)
+            for (int n = 0; n < drawData.CmdListsCount; n++)
             {
-                ImDrawListPtr cmd_list = draw_data.CmdListsRange[n];
+                ImDrawListPtr cmd_list = drawData.CmdListsRange[n];
                 for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++)
                 {
                     ImDrawCmdPtr pcmd = cmd_list.CmdBuffer[cmd_i];

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Numerics;
 using Veldrid;
 using Veldrid.Sdl2;
@@ -24,6 +25,8 @@ namespace Ae.ImGuiBootstrapper
         private readonly GraphicsDevice _gd;
         private readonly CommandList _cl;
         private readonly ImGuiController _controller;
+        private readonly Stopwatch _sw = Stopwatch.StartNew();
+        private float lastTime = 0;
         private bool _loopedOnce;
         private bool _startFrame = true;
         private bool _resourcesCreated;
@@ -108,7 +111,12 @@ namespace Ae.ImGuiBootstrapper
                 return;
             }
 
-            _controller.StartFrame(1f / 60f, _window.PumpEvents());
+            // Calculate delta time
+            float currentTime = _sw.ElapsedMilliseconds;
+            float deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            _controller.StartFrame(deltaTime / 1000, _window.PumpEvents());
             _startFrame = false;
         }
 
