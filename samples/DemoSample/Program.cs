@@ -5,6 +5,9 @@ using Veldrid.StartupUtilities;
 
 namespace Ae.ImGuiBootstrapper.DemoSample
 {
+    /// <summary>
+    /// A sample to show the ImGui demo window.
+    /// </summary>
     internal static class Program
     {
         private static void Main()

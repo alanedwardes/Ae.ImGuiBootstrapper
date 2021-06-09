@@ -5,6 +5,9 @@ using Veldrid.StartupUtilities;
 
 namespace Ae.ImGuiBootstrapper.MultipleWindows
 {
+    /// <summary>
+    /// A sample to showcase handling multiple windows (via multiple ImGui contexts).
+    /// </summary>
     internal static class Program
     {
         private static void Main()

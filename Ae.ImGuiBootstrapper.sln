@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ae.ImGuiBootstrapper.Multip
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ae.ImGuiBootstrapper.FontsSample", "samples\FontsSample\Ae.ImGuiBootstrapper.FontsSample.csproj", "{3A38A14D-C4E9-4187-B6D7-DE17F3196C67}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ae.ImGuiBootstrapper.DebugSample", "samples\DebugSample\Ae.ImGuiBootstrapper.DebugSample.csproj", "{958CBB1A-F5A4-4021-B532-81A4F75CC6FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{3A38A14D-C4E9-4187-B6D7-DE17F3196C67}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A38A14D-C4E9-4187-B6D7-DE17F3196C67}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A38A14D-C4E9-4187-B6D7-DE17F3196C67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{958CBB1A-F5A4-4021-B532-81A4F75CC6FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{958CBB1A-F5A4-4021-B532-81A4F75CC6FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{958CBB1A-F5A4-4021-B532-81A4F75CC6FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{958CBB1A-F5A4-4021-B532-81A4F75CC6FB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -62,6 +68,7 @@ Global
 		{D6082457-8F5E-4340-9FA6-14C66CDD8208} = {B64D6AD4-7A73-4D7E-869B-AD8E9E2723EE}
 		{AB006141-ADF8-40E9-A3B7-CC16231B1872} = {38D7EC6C-2047-4AC3-B8DF-41C7FE505826}
 		{3A38A14D-C4E9-4187-B6D7-DE17F3196C67} = {38D7EC6C-2047-4AC3-B8DF-41C7FE505826}
+		{958CBB1A-F5A4-4021-B532-81A4F75CC6FB} = {38D7EC6C-2047-4AC3-B8DF-41C7FE505826}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DCCDBEC2-8CA7-428F-8E03-20216CCF3837}

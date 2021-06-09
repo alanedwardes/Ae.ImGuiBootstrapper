@@ -6,6 +6,9 @@ using Veldrid.StartupUtilities;
 
 namespace Ae.ImGuiBootstrapper.TextureSample
 {
+    /// <summary>
+    /// A sample to show loading a texture and displaying it within ImGui.
+    /// </summary>
     internal static class Program
     {
         private static void Main()
