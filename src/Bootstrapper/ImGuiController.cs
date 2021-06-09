@@ -44,10 +44,10 @@ namespace Ae.ImGuiBootstrapper
         private Vector2 _scaleFactor = Vector2.One;
 
         // Image trackers
-        private readonly Dictionary<TextureView, ResourceSetInfo> _setsByView = new Dictionary<TextureView, ResourceSetInfo>();
-        private readonly Dictionary<Texture, TextureView> _autoViewsByTexture = new Dictionary<Texture, TextureView>();
-        private readonly Dictionary<IntPtr, ResourceSetInfo> _viewsById = new Dictionary<IntPtr, ResourceSetInfo>();
-        private readonly List<IDisposable> _ownedResources = new List<IDisposable>();
+        private readonly IDictionary<TextureView, IntPtr> _textureViewToPointerLookup = new Dictionary<TextureView, IntPtr>();
+        private readonly IDictionary<Texture, TextureView> _textureToTextureViewLookup = new Dictionary<Texture, TextureView>();
+        private readonly IDictionary<IntPtr, ResourceSet> _pointerToResourceSetLookup = new Dictionary<IntPtr, ResourceSet>();
+        private readonly IList<IDisposable> _ownedResources = new List<IDisposable>();
         private int _lastAssignedID = 100;
 
         /// <summary>
@@ -56,8 +56,6 @@ namespace Ae.ImGuiBootstrapper
         public ImGuiController(GraphicsDevice gd, int width, int height)
         {
             _gd = gd;
-            _windowWidth = width;
-            _windowHeight = height;
 
             ImGui.SetCurrentContext(_context);
             _io = ImGui.GetIO();
@@ -65,13 +63,17 @@ namespace Ae.ImGuiBootstrapper
             CreateDeviceResources();
             SetKeyMappings();
 
-            SetPerFrameImGuiData(1f / 60f);
+            WindowResized(width, height);
         }
 
         public void WindowResized(int width, int height)
         {
             _windowWidth = width;
             _windowHeight = height;
+            _io.DisplaySize = new Vector2(_windowWidth, _windowHeight) / _scaleFactor;
+
+            // Update the projection matrix
+            _gd.UpdateBuffer(_projMatrixBuffer, 0, Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
         }
 
         public void CreateDeviceResources()
@@ -124,23 +126,23 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, TextureView textureView)
         {
-            if (!_setsByView.TryGetValue(textureView, out ResourceSetInfo rsi))
+            if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
             {
                 ResourceSet resourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, textureView));
-                rsi = new ResourceSetInfo(GetNextImGuiBindingID(), resourceSet);
 
-                _setsByView.Add(textureView, rsi);
-                _viewsById.Add(rsi.ImGuiBinding, rsi);
+                binding = GetNextImGuiBindingID();
+
+                _textureViewToPointerLookup.Add(textureView, binding);
+                _pointerToResourceSetLookup.Add(binding, resourceSet);
                 _ownedResources.Add(resourceSet);
             }
 
-            return rsi.ImGuiBinding;
+            return binding;
         }
 
         private IntPtr GetNextImGuiBindingID()
         {
-            int newID = _lastAssignedID++;
-            return (IntPtr)newID;
+            return (IntPtr)_lastAssignedID++;
         }
 
         /// <summary>
@@ -149,27 +151,14 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, Texture texture)
         {
-            if (!_autoViewsByTexture.TryGetValue(texture, out TextureView textureView))
+            if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
             {
                 textureView = factory.CreateTextureView(texture);
-                _autoViewsByTexture.Add(texture, textureView);
+                _textureToTextureViewLookup.Add(texture, textureView);
                 _ownedResources.Add(textureView);
             }
 
             return GetOrCreateImGuiBinding(factory, textureView);
-        }
-
-        /// <summary>
-        /// Retrieves the shader texture binding for the given helper handle.
-        /// </summary>
-        public ResourceSet GetImageResourceSet(IntPtr imGuiBinding)
-        {
-            if (!_viewsById.TryGetValue(imGuiBinding, out ResourceSetInfo tvi))
-            {
-                throw new InvalidOperationException("No registered ImGui binding with id " + imGuiBinding.ToString());
-            }
-
-            return tvi.ResourceSet;
         }
 
         public void ClearCachedImageResources()
@@ -180,9 +169,9 @@ namespace Ae.ImGuiBootstrapper
             }
 
             _ownedResources.Clear();
-            _setsByView.Clear();
-            _viewsById.Clear();
-            _autoViewsByTexture.Clear();
+            _pointerToResourceSetLookup.Clear();
+            _textureViewToPointerLookup.Clear();
+            _textureToTextureViewLookup.Clear();
             _lastAssignedID = 100;
         }
 
@@ -243,6 +232,8 @@ namespace Ae.ImGuiBootstrapper
 
             _fontTextureResourceSet = _gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
 
+            _pointerToResourceSetLookup[_fontAtlasID] = _fontTextureResourceSet;
+
             _io.Fonts.ClearTexData();
         }
 
@@ -269,7 +260,9 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void StartFrame(float deltaSeconds, InputSnapshot snapshot)
         {
-            SetPerFrameImGuiData(deltaSeconds);
+            _io.DisplayFramebufferScale = _scaleFactor;
+            _io.DeltaTime = deltaSeconds;
+
             UpdateImGuiInput(snapshot);
 
             ImGui.SetCurrentContext(_context);
@@ -280,17 +273,6 @@ namespace Ae.ImGuiBootstrapper
         {
             ImGui.SetCurrentContext(_context);
             ImGui.EndFrame();
-        }
-
-        /// <summary>
-        /// Sets per-frame data based on the associated window.
-        /// This is called by Update(float).
-        /// </summary>
-        private void SetPerFrameImGuiData(float deltaSeconds)
-        {
-            _io.DisplaySize = new Vector2(_windowWidth / _scaleFactor.X, _windowHeight / _scaleFactor.Y);
-            _io.DisplayFramebufferScale = _scaleFactor;
-            _io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
         }
 
         private void UpdateImGuiInput(InputSnapshot snapshot)
@@ -373,11 +355,13 @@ namespace Ae.ImGuiBootstrapper
             _io.KeyMap[(int)ImGuiKey.PageDown] = (int)Key.PageDown;
             _io.KeyMap[(int)ImGuiKey.Home] = (int)Key.Home;
             _io.KeyMap[(int)ImGuiKey.End] = (int)Key.End;
+            _io.KeyMap[(int)ImGuiKey.Insert] = (int)Key.Insert;
             _io.KeyMap[(int)ImGuiKey.Delete] = (int)Key.Delete;
             _io.KeyMap[(int)ImGuiKey.Backspace] = (int)Key.BackSpace;
+            _io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
             _io.KeyMap[(int)ImGuiKey.Enter] = (int)Key.Enter;
             _io.KeyMap[(int)ImGuiKey.Escape] = (int)Key.Escape;
-            _io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
+            _io.KeyMap[(int)ImGuiKey.KeyPadEnter] = (int)Key.KeypadEnter;
             _io.KeyMap[(int)ImGuiKey.A] = (int)Key.A;
             _io.KeyMap[(int)ImGuiKey.C] = (int)Key.C;
             _io.KeyMap[(int)ImGuiKey.V] = (int)Key.V;
@@ -388,9 +372,6 @@ namespace Ae.ImGuiBootstrapper
 
         private void RenderImDrawData(ImDrawDataPtr draw_data, CommandList cl)
         {
-            uint vertexOffsetInVertices = 0;
-            uint indexOffsetInElements = 0;
-
             if (draw_data.CmdListsCount == 0)
             {
                 return;
@@ -410,6 +391,8 @@ namespace Ae.ImGuiBootstrapper
                 _indexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             }
 
+            uint vertexOffsetInVertices = 0;
+            uint indexOffsetInElements = 0;
             for (int i = 0; i < draw_data.CmdListsCount; i++)
             {
                 ImDrawListPtr cmd_list = draw_data.CmdListsRange[i];
@@ -421,11 +404,6 @@ namespace Ae.ImGuiBootstrapper
                 vertexOffsetInVertices += (uint)cmd_list.VtxBuffer.Size;
                 indexOffsetInElements += (uint)cmd_list.IdxBuffer.Size;
             }
-
-            // Setup orthographic projection matrix into our constant buffer
-            Matrix4x4 mvp = Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f);
-
-            _gd.UpdateBuffer(_projMatrixBuffer, 0, ref mvp);
 
             cl.SetVertexBuffer(0, _vertexBuffer);
             cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt16);
@@ -451,14 +429,7 @@ namespace Ae.ImGuiBootstrapper
                     {
                         if (pcmd.TextureId != IntPtr.Zero)
                         {
-                            if (pcmd.TextureId == _fontAtlasID)
-                            {
-                                cl.SetGraphicsResourceSet(1, _fontTextureResourceSet);
-                            }
-                            else
-                            {
-                                cl.SetGraphicsResourceSet(1, GetImageResourceSet(pcmd.TextureId));
-                            }
+                            cl.SetGraphicsResourceSet(1, _pointerToResourceSetLookup[pcmd.TextureId]);
                         }
 
                         cl.SetScissorRect(0, (uint)pcmd.ClipRect.X, (uint)pcmd.ClipRect.Y, (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X), (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y));
@@ -491,18 +462,6 @@ namespace Ae.ImGuiBootstrapper
             foreach (IDisposable resource in _ownedResources)
             {
                 resource.Dispose();
-            }
-        }
-
-        private struct ResourceSetInfo
-        {
-            public readonly IntPtr ImGuiBinding;
-            public readonly ResourceSet ResourceSet;
-
-            public ResourceSetInfo(IntPtr imGuiBinding, ResourceSet resourceSet)
-            {
-                ImGuiBinding = imGuiBinding;
-                ResourceSet = resourceSet;
             }
         }
     }
