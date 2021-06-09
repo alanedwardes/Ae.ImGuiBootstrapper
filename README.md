@@ -1,13 +1,12 @@
 # Ae.ImGuiBootstrapper
 
-![.NET Core](https://github.com/alanedwardes/Ae.ImGuiBootstrapper/workflows/.NET/badge.svg?branch=master)
+![.NET Core](https://github.com/alanedwardes/Ae.ImGuiBootstrapper/workflows/.NET/badge.svg?branch=master) [![](https://img.shields.io/nuget/v/Ae.ImGuiBootstrapper) ![](https://img.shields.io/badge/framework-netstandard2.0-blue)](https://www.nuget.org/packages/Ae.ImGuiBootstrapper/) 
 
 Provides a simple interface to create ImGui windows on Windows, macOS, Linux.
 
 ![](https://s.edward.es/bfeba1bb-c2cb-46d3-96be-2af4a9fcc6dd.png)
 
 ## Hello World Example
-[![](https://img.shields.io/nuget/v/Ae.ImGuiBootstrapper) ![](https://img.shields.io/badge/framework-netstandard2.0-blue)](https://www.nuget.org/packages/Ae.ImGuiBootstrapper/) 
 
 The below code will render a simple window containing the text "Hello World".
 
