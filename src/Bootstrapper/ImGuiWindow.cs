@@ -29,7 +29,6 @@ namespace Ae.ImGuiBootstrapper
         private float lastTime = 0;
         private bool _loopedOnce;
         private bool _startFrame = true;
-        private bool _resourcesCreated;
 
         private ImGuiWindow((Sdl2Window, GraphicsDevice) windowAndGraphicsDevice)
         {
@@ -97,7 +96,7 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         /// <param name="texture"></param>
         /// <returns></returns>
-        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImGuiBinding(_gd.ResourceFactory, texture);
+        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImageBinding(_gd.ResourceFactory, texture);
 
         /// <summary>
         /// Should be called in a while loop, with ImgGui draw calls in the body of the loop.
@@ -141,12 +140,6 @@ namespace Ae.ImGuiBootstrapper
 
         private void StartFrameInternal()
         {
-            if (!_resourcesCreated)
-            {
-                _controller.RecreateFontDeviceTexture();
-                _resourcesCreated = true;
-            }
-
             if (!IsOpen)
             {
                 return;

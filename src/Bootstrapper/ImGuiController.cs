@@ -36,6 +36,7 @@ namespace Ae.ImGuiBootstrapper
         private bool _shiftDown;
         private bool _altDown;
         private bool _winKeyDown;
+        private bool _isFontInitialised;
 
         private int _windowWidth;
         private int _windowHeight;
@@ -76,7 +77,7 @@ namespace Ae.ImGuiBootstrapper
             _gd.UpdateBuffer(_projMatrixBuffer, 0, Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
         }
 
-        public void CreateDeviceResources()
+        private void CreateDeviceResources()
         {
             ResourceFactory factory = _gd.ResourceFactory;
             _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
@@ -120,11 +121,7 @@ namespace Ae.ImGuiBootstrapper
             _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, _gd.PointSampler));
         }
 
-        /// <summary>
-        /// Gets or creates a handle for a texture to be drawn with ImGui.
-        /// Pass the returned handle to Image() or ImageButton().
-        /// </summary>
-        public IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, TextureView textureView)
+        private IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, TextureView textureView)
         {
             if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
             {
@@ -149,7 +146,7 @@ namespace Ae.ImGuiBootstrapper
         /// Gets or creates a handle for a texture to be drawn with ImGui.
         /// Pass the returned handle to Image() or ImageButton().
         /// </summary>
-        public IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, Texture texture)
+        public IntPtr GetOrCreateImageBinding(ResourceFactory factory, Texture texture)
         {
             if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
             {
@@ -161,7 +158,7 @@ namespace Ae.ImGuiBootstrapper
             return GetOrCreateImGuiBinding(factory, textureView);
         }
 
-        public void ClearCachedImageResources()
+        private void ClearCachedImageResources()
         {
             foreach (IDisposable resource in _ownedResources)
             {
@@ -215,10 +212,7 @@ namespace Ae.ImGuiBootstrapper
             }
         }
         
-        /// <summary>
-        /// Recreates the device texture used to render text.
-        /// </summary>
-        public void RecreateFontDeviceTexture()
+        private void RecreateFontDeviceTexture()
         {
             // Build
             _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
@@ -264,6 +258,12 @@ namespace Ae.ImGuiBootstrapper
             _io.DeltaTime = deltaSeconds;
 
             UpdateImGuiInput(snapshot);
+
+            if (!_isFontInitialised)
+            {
+                RecreateFontDeviceTexture();
+                _isFontInitialised = true;
+            }
 
             ImGui.SetCurrentContext(_context);
             ImGui.NewFrame();
