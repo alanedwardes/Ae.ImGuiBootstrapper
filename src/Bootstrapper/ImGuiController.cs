@@ -391,20 +391,6 @@ namespace Ae.ImGuiBootstrapper
                 _indexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             }
 
-            uint vertexOffsetInVertices = 0;
-            uint indexOffsetInElements = 0;
-            for (int i = 0; i < drawData.CmdListsCount; i++)
-            {
-                ImDrawListPtr cmd_list = drawData.CmdListsRange[i];
-
-                cl.UpdateBuffer(_vertexBuffer, vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(), cmd_list.VtxBuffer.Data, (uint)(cmd_list.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
-
-                cl.UpdateBuffer(_indexBuffer, indexOffsetInElements * sizeof(ushort), cmd_list.IdxBuffer.Data, (uint)(cmd_list.IdxBuffer.Size * sizeof(ushort)));
-
-                vertexOffsetInVertices += (uint)cmd_list.VtxBuffer.Size;
-                indexOffsetInElements += (uint)cmd_list.IdxBuffer.Size;
-            }
-
             cl.SetVertexBuffer(0, _vertexBuffer);
             cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt16);
             cl.SetPipeline(_pipeline);
@@ -413,32 +399,43 @@ namespace Ae.ImGuiBootstrapper
             drawData.ScaleClipRects(_io.DisplayFramebufferScale);
 
             // Render command lists
+            uint vertexOffsetInVertices = 0;
+            uint indexOffsetInElements = 0;
             int vtx_offset = 0;
-            int idx_offset = 0;
-            for (int n = 0; n < drawData.CmdListsCount; n++)
+            uint idx_offset = 0;
+            for (int commandListIndex = 0; commandListIndex < drawData.CmdListsCount; commandListIndex++)
             {
-                ImDrawListPtr cmd_list = drawData.CmdListsRange[n];
-                for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++)
+                ImDrawListPtr commandList = drawData.CmdListsRange[commandListIndex];
+
+                // Update buffers
+                cl.UpdateBuffer(_vertexBuffer, vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(), commandList.VtxBuffer.Data, (uint)(commandList.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
+                cl.UpdateBuffer(_indexBuffer, indexOffsetInElements * sizeof(ushort), commandList.IdxBuffer.Data, (uint)(commandList.IdxBuffer.Size * sizeof(ushort)));
+
+                // Update offsets
+                vertexOffsetInVertices += (uint)commandList.VtxBuffer.Size;
+                indexOffsetInElements += (uint)commandList.IdxBuffer.Size;
+
+                for (int commandBufferIndex = 0; commandBufferIndex < commandList.CmdBuffer.Size; commandBufferIndex++)
                 {
-                    ImDrawCmdPtr pcmd = cmd_list.CmdBuffer[cmd_i];
-                    if (pcmd.UserCallback != IntPtr.Zero)
+                    ImDrawCmdPtr drawCommand = commandList.CmdBuffer[commandBufferIndex];
+                    if (drawCommand.UserCallback != IntPtr.Zero)
                     {
-                        throw new NotImplementedException();
+                        throw new NotImplementedException("Encountered draw command with user callback");
                     }
                     else
                     {
-                        if (pcmd.TextureId != IntPtr.Zero)
+                        if (drawCommand.TextureId != IntPtr.Zero)
                         {
-                            cl.SetGraphicsResourceSet(1, _pointerToResourceSetLookup[pcmd.TextureId]);
+                            cl.SetGraphicsResourceSet(1, _pointerToResourceSetLookup[drawCommand.TextureId]);
                         }
 
-                        cl.SetScissorRect(0, (uint)pcmd.ClipRect.X, (uint)pcmd.ClipRect.Y, (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X), (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y));
-                        cl.DrawIndexed(pcmd.ElemCount, 1, (uint)idx_offset, vtx_offset, 0);
+                        cl.SetScissorRect(0, (uint)drawCommand.ClipRect.X, (uint)drawCommand.ClipRect.Y, (uint)(drawCommand.ClipRect.Z - drawCommand.ClipRect.X), (uint)(drawCommand.ClipRect.W - drawCommand.ClipRect.Y));
+                        cl.DrawIndexed(drawCommand.ElemCount, 1, idx_offset, vtx_offset, 0);
                     }
 
-                    idx_offset += (int)pcmd.ElemCount;
+                    idx_offset += drawCommand.ElemCount;
                 }
-                vtx_offset += cmd_list.VtxBuffer.Size;
+                vtx_offset += commandList.VtxBuffer.Size;
             }
         }
 
