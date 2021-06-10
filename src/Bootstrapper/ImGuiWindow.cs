@@ -20,6 +20,10 @@ namespace Ae.ImGuiBootstrapper
         /// Provides access to the underlying Veldrid <see cref="Veldrid.ResourceFactory"/>.
         /// </summary>
         public ResourceFactory ResourceFactory => _gd.ResourceFactory;
+        /// <summary>
+        /// Provides access to the underlying Veldrid <see cref="Sdl2Window"/>.
+        /// </summary>
+        public Sdl2Window Window => _window;
 
         private readonly Sdl2Window _window;
         private readonly GraphicsDevice _gd;
