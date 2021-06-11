@@ -15,38 +15,32 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Provides access to the underlying Veldrid <see cref="Veldrid.GraphicsDevice"/>.
         /// </summary>
-        public GraphicsDevice GraphicsDevice => _gd;
+        public GraphicsDevice GraphicsDevice { get; }
         /// <summary>
-        /// Provides access to the underlying Veldrid <see cref="Veldrid.ResourceFactory"/>.
+        /// Provides access to the underlying <see cref="Sdl2Window"/>.
         /// </summary>
-        public ResourceFactory ResourceFactory => _gd.ResourceFactory;
-        /// <summary>
-        /// Provides access to the underlying Veldrid <see cref="Sdl2Window"/>.
-        /// </summary>
-        public Sdl2Window Window => _window;
+        public Sdl2Window Window { get; }
 
-        private readonly Sdl2Window _window;
-        private readonly GraphicsDevice _gd;
         private readonly CommandList _cl;
-        private readonly ImGuiController _controller;
+        private readonly ImGuiRenderer _controller;
         private readonly Stopwatch _sw = Stopwatch.StartNew();
-        private float lastTime = 0;
+        private float _lastTime;
         private bool _loopedOnce;
         private bool _startFrame = true;
 
         private ImGuiWindow((Sdl2Window, GraphicsDevice) windowAndGraphicsDevice)
         {
-            _window = windowAndGraphicsDevice.Item1;
-            _gd = windowAndGraphicsDevice.Item2;
+            Window = windowAndGraphicsDevice.Item1;
+            GraphicsDevice = windowAndGraphicsDevice.Item2;
 
-            _window.Resized += () =>
+            Window.Resized += () =>
             {
-                _gd.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
-                _controller.WindowResized(_window.Width, _window.Height);
+                GraphicsDevice.MainSwapchain.Resize((uint)Window.Width, (uint)Window.Height);
+                _controller.WindowResized(Window.Width, Window.Height);
             };
 
-            _cl = _gd.ResourceFactory.CreateCommandList();
-            _controller = new ImGuiController(_gd, _window.Width, _window.Height);
+            _cl = GraphicsDevice.ResourceFactory.CreateCommandList();
+            _controller = new ImGuiRenderer(GraphicsDevice, Window.Width, Window.Height);
         }
 
         /// <summary>
@@ -100,7 +94,7 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         /// <param name="texture"></param>
         /// <returns></returns>
-        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImageBinding(_gd.ResourceFactory, texture);
+        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImageBinding(GraphicsDevice.ResourceFactory, texture);
 
         /// <summary>
         /// Should be called in a while loop, with ImgGui draw calls in the body of the loop.
@@ -122,7 +116,7 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Determines whether the window is open or has been closed.
         /// </summary>
-        public bool IsOpen => _window.Exists;
+        public bool IsOpen => Window.Exists;
 
         /// <summary>
         /// Start a new frame. This call should be followed by ImgGui draw calls.
@@ -151,10 +145,10 @@ namespace Ae.ImGuiBootstrapper
 
             // Calculate delta time
             float currentTime = _sw.ElapsedMilliseconds;
-            float deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
+            float deltaTime = currentTime - _lastTime;
+            _lastTime = currentTime;
 
-            _controller.StartFrame(deltaTime / 1000, _window.PumpEvents());
+            _controller.StartFrame(deltaTime / 1000, Window.PumpEvents());
             _startFrame = false;
         }
 
@@ -186,12 +180,12 @@ namespace Ae.ImGuiBootstrapper
             _controller.EndFrame();
 
             _cl.Begin();
-            _cl.SetFramebuffer(_gd.MainSwapchain.Framebuffer);
+            _cl.SetFramebuffer(GraphicsDevice.MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, new RgbaFloat(backgroundColor.X, backgroundColor.Y, backgroundColor.Z, 1f));
             _controller.Render(_cl);
             _cl.End();
-            _gd.SubmitCommands(_cl);
-            _gd.SwapBuffers(_gd.MainSwapchain);
+            GraphicsDevice.SubmitCommands(_cl);
+            GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
 
             _startFrame = true;
         }
@@ -201,10 +195,10 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void Dispose()
         {
-            _gd.WaitForIdle();
+            GraphicsDevice.WaitForIdle();
             _controller.Dispose();
             _cl.Dispose();
-            _gd.Dispose();
+            GraphicsDevice.Dispose();
         }
     }
 }

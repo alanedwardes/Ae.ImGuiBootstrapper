@@ -15,7 +15,7 @@ namespace Ae.ImGuiBootstrapper.TextureSample
 
             var image = new ImageSharpTexture("wibble.png");
 
-            using var texture = image.CreateDeviceTexture(window.GraphicsDevice, window.ResourceFactory);
+            using var texture = image.CreateDeviceTexture(window.GraphicsDevice, window.GraphicsDevice.ResourceFactory);
 
             var textureId = window.BindTexture(texture);
 

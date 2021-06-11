@@ -13,7 +13,7 @@ namespace Ae.ImGuiBootstrapper
     /// A modified version of Veldrid.ImGui's ImGuiRenderer.
     /// Manages input for ImGui and handles rendering ImGui's DrawLists with Veldrid.
     /// </summary>
-    internal sealed class ImGuiController : IDisposable
+    public sealed class ImGuiRenderer : IDisposable
     {
         private readonly GraphicsDevice _gd;
 
@@ -52,9 +52,9 @@ namespace Ae.ImGuiBootstrapper
         private int _lastAssignedID = 100;
 
         /// <summary>
-        /// Constructs a new ImGuiController.
+        /// Constructs a new ImGuiController using the specified <see cref="GraphicsDevice"/>, at the specified width and height.
         /// </summary>
-        public ImGuiController(GraphicsDevice gd, int width, int height)
+        public ImGuiRenderer(GraphicsDevice gd, int width, int height)
         {
             _gd = gd;
 
@@ -67,6 +67,11 @@ namespace Ae.ImGuiBootstrapper
             WindowResized(width, height);
         }
 
+        /// <summary>
+        /// Should be called when the window is resized.
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
         public void WindowResized(int width, int height)
         {
             _windowWidth = width;
@@ -110,7 +115,7 @@ namespace Ae.ImGuiBootstrapper
             GraphicsPipelineDescription pd = new GraphicsPipelineDescription(
                 BlendStateDescription.SingleAlphaBlend,
                 new DepthStencilStateDescription(false, false, ComparisonKind.Always),
-                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, false, true),
+                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, true, true),
                 PrimitiveTopology.TriangleList,
                 new ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
                 new ResourceLayout[] { _layout, _textureLayout },
@@ -158,20 +163,6 @@ namespace Ae.ImGuiBootstrapper
             return GetOrCreateImGuiBinding(factory, textureView);
         }
 
-        private void ClearCachedImageResources()
-        {
-            foreach (IDisposable resource in _ownedResources)
-            {
-                resource.Dispose();
-            }
-
-            _ownedResources.Clear();
-            _pointerToResourceSetLookup.Clear();
-            _textureViewToPointerLookup.Clear();
-            _textureToTextureViewLookup.Clear();
-            _lastAssignedID = 100;
-        }
-
         private byte[] LoadEmbeddedShaderCode(ResourceFactory factory, string name, ShaderStages stage)
         {
             switch (factory.BackendType)
@@ -182,7 +173,8 @@ namespace Ae.ImGuiBootstrapper
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 case GraphicsBackend.OpenGL:
-                {
+                case GraphicsBackend.OpenGLES:
+                    {
                     string resourceName = name + ".glsl";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
@@ -203,7 +195,7 @@ namespace Ae.ImGuiBootstrapper
 
         private byte[] GetEmbeddedResourceBytes(string resourceName)
         {
-            Assembly assembly = typeof(ImGuiController).Assembly;
+            Assembly assembly = typeof(ImGuiRenderer).Assembly;
             using (Stream s = assembly.GetManifestResourceStream(resourceName))
             {
                 byte[] ret = new byte[s.Length];
@@ -214,9 +206,7 @@ namespace Ae.ImGuiBootstrapper
         
         private void RecreateFontDeviceTexture()
         {
-            // Build
             _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
-            // Store our identifier
             _io.Fonts.SetTexID(_fontAtlasID);
 
             _fontTexture = _gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
@@ -232,10 +222,8 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Renders the ImGui draw list data.
-        /// This method requires a <see cref="GraphicsDevice"/> because it may create new DeviceBuffers if the size of vertex
-        /// or index data has increased beyond the capacity of the existing buffers.
-        /// A <see cref="CommandList"/> is needed to submit drawing and resource update commands.
+        /// Renders the ImGui draw list data. A <see cref="CommandList"/> is needed to submit drawing and resource update commands.
+        /// This may create new DeviceBuffers if the size of vertex or index data has increased beyond the capacity of the existing buffers.
         /// </summary>
         public void Render(CommandList cl)
         {
@@ -250,7 +238,7 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Updates ImGui input and IO configuration state.
+        /// Process input, and start the ImGui frame using <see cref="ImGui.NewFrame"/>.
         /// </summary>
         public void StartFrame(float deltaSeconds, InputSnapshot snapshot)
         {
@@ -269,6 +257,9 @@ namespace Ae.ImGuiBootstrapper
             ImGui.NewFrame();
         }
 
+        /// <summary>
+        /// End the ImGui frame using <see cref="ImGui.EndFrame"/>.
+        /// </summary>
         public void EndFrame()
         {
             ImGui.SetCurrentContext(_context);
@@ -439,9 +430,7 @@ namespace Ae.ImGuiBootstrapper
             }
         }
 
-        /// <summary>
-        /// Frees all graphics resources used by the renderer.
-        /// </summary>
+        /// <inheritdoc/>
         public void Dispose()
         {
             _vertexBuffer.Dispose();
