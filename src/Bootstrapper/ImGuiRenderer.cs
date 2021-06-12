@@ -126,11 +126,20 @@ namespace Ae.ImGuiBootstrapper
             _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, _gd.PointSampler));
         }
 
-        private IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, TextureView textureView)
+        private IntPtr GetNextImGuiBindingID()
+        {
+            return (IntPtr)_lastAssignedID++;
+        }
+
+        /// <summary>
+        /// Gets or creates a handle for a texture to be drawn with ImGui.
+        /// Pass the returned handle to Image() or ImageButton().
+        /// </summary>
+        public IntPtr CreateTextureViewResources(TextureView textureView)
         {
             if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
             {
-                ResourceSet resourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, textureView));
+                ResourceSet resourceSet = _gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, textureView));
 
                 binding = GetNextImGuiBindingID();
 
@@ -142,25 +151,69 @@ namespace Ae.ImGuiBootstrapper
             return binding;
         }
 
-        private IntPtr GetNextImGuiBindingID()
-        {
-            return (IntPtr)_lastAssignedID++;
-        }
-
         /// <summary>
         /// Gets or creates a handle for a texture to be drawn with ImGui.
         /// Pass the returned handle to Image() or ImageButton().
         /// </summary>
-        public IntPtr GetOrCreateImageBinding(ResourceFactory factory, Texture texture)
+        public IntPtr CreateTextureResources(Texture texture)
         {
             if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
             {
-                textureView = factory.CreateTextureView(texture);
+                textureView = _gd.ResourceFactory.CreateTextureView(texture);
                 _textureToTextureViewLookup.Add(texture, textureView);
                 _ownedResources.Add(textureView);
             }
 
-            return GetOrCreateImGuiBinding(factory, textureView);
+            return CreateTextureViewResources(textureView);
+        }
+
+        /// <summary>
+        /// Destroys the resources associated with the <see cref="Texture"/> which was previously bound
+        /// using <see cref="CreateTextureResources(Texture)"/>.
+        /// </summary>
+        /// <param name="texture"></param>
+        public void DestroyTextureResources(Texture texture)
+        {
+            if (_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
+            {
+                DestroyTextureResourcesInternal(texture, textureView, _textureViewToPointerLookup[textureView]);
+            }
+            else
+            {
+                throw new InvalidOperationException("Resources for this texture resource were not found.");
+            }
+        }
+
+        /// <summary>
+        /// Destroys the resources associated with the <see cref="TextureView"/> which was previously bound
+        /// using <see cref="CreateTextureViewResources(TextureView)"/>.
+        /// </summary>
+        /// <param name="textureView"></param>
+        public void DestroyTextureViewResources(TextureView textureView)
+        {
+            if (_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr pointer))
+            {
+                DestroyTextureViewResourcesInternal(textureView, pointer);
+            }
+            else
+            {
+                throw new InvalidOperationException("Resources for this texture view resource were not found.");
+            }
+        }
+
+        private void DestroyTextureResourcesInternal(Texture texture, TextureView textureView, IntPtr pointer)
+        {
+            textureView.Dispose();
+            _textureToTextureViewLookup.Remove(texture);
+            DestroyTextureViewResourcesInternal(textureView, pointer);
+        }
+
+        private void DestroyTextureViewResourcesInternal(TextureView textureView, IntPtr pointer)
+        {
+            _pointerToResourceSetLookup[pointer].Dispose();
+            _textureViewToPointerLookup.Remove(textureView);
+            _pointerToResourceSetLookup.Remove(pointer);
+            _ownedResources.Remove(textureView);
         }
 
         private byte[] LoadEmbeddedShaderCode(ResourceFactory factory, string name, ShaderStages stage)
@@ -232,6 +285,9 @@ namespace Ae.ImGuiBootstrapper
             {
                 throw new InvalidOperationException($"The context was changed between the EndFrame and Render calls. Expecting {_context}, got {currentContext}");
             }
+
+            ImGui.SetCurrentContext(_context);
+            ImGui.EndFrame();
 
             ImGui.Render();
             RenderImDrawData(ImGui.GetDrawData(), cl);
@@ -392,8 +448,8 @@ namespace Ae.ImGuiBootstrapper
             // Render command lists
             uint vertexOffsetInVertices = 0;
             uint indexOffsetInElements = 0;
-            int vtx_offset = 0;
-            uint idx_offset = 0;
+            int vertexBufferOffset = 0;
+            uint indexBufferOffset = 0;
             for (int commandListIndex = 0; commandListIndex < drawData.CmdListsCount; commandListIndex++)
             {
                 ImDrawListPtr commandList = drawData.CmdListsRange[commandListIndex];
@@ -421,12 +477,12 @@ namespace Ae.ImGuiBootstrapper
                         }
 
                         cl.SetScissorRect(0, (uint)drawCommand.ClipRect.X, (uint)drawCommand.ClipRect.Y, (uint)(drawCommand.ClipRect.Z - drawCommand.ClipRect.X), (uint)(drawCommand.ClipRect.W - drawCommand.ClipRect.Y));
-                        cl.DrawIndexed(drawCommand.ElemCount, 1, idx_offset, vtx_offset, 0);
+                        cl.DrawIndexed(drawCommand.ElemCount, 1, indexBufferOffset, vertexBufferOffset, 0);
                     }
 
-                    idx_offset += drawCommand.ElemCount;
+                    indexBufferOffset += drawCommand.ElemCount;
                 }
-                vtx_offset += commandList.VtxBuffer.Size;
+                vertexBufferOffset += commandList.VtxBuffer.Size;
             }
         }
 

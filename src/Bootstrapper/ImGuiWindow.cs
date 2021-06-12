@@ -20,9 +20,12 @@ namespace Ae.ImGuiBootstrapper
         /// Provides access to the underlying <see cref="Sdl2Window"/>.
         /// </summary>
         public Sdl2Window Window { get; }
+        /// <summary>
+        /// Provides access to the underlying <see cref="ImGuiRenderer"/>.
+        /// </summary>
+        public ImGuiRenderer Renderer { get; }
 
         private readonly CommandList _cl;
-        private readonly ImGuiRenderer _controller;
         private readonly Stopwatch _sw = Stopwatch.StartNew();
         private float _lastTime;
         private bool _loopedOnce;
@@ -36,11 +39,11 @@ namespace Ae.ImGuiBootstrapper
             Window.Resized += () =>
             {
                 GraphicsDevice.MainSwapchain.Resize((uint)Window.Width, (uint)Window.Height);
-                _controller.WindowResized(Window.Width, Window.Height);
+                Renderer.WindowResized(Window.Width, Window.Height);
             };
 
             _cl = GraphicsDevice.ResourceFactory.CreateCommandList();
-            _controller = new ImGuiRenderer(GraphicsDevice, Window.Width, Window.Height);
+            Renderer = new ImGuiRenderer(GraphicsDevice, Window.Width, Window.Height);
         }
 
         /// <summary>
@@ -88,13 +91,6 @@ namespace Ae.ImGuiBootstrapper
             VeldridStartup.CreateWindowAndGraphicsDevice(windowCreateInfo, graphicsDeviceOptions, out var window, out var gd);
             return (window, gd);
         }
-
-        /// <summary>
-        /// Binds the specified <see cref="Texture"/> to the graphics pipeline and return its <see cref="IntPtr"/> ID for use in ImGui.
-        /// </summary>
-        /// <param name="texture"></param>
-        /// <returns></returns>
-        public IntPtr BindTexture(Texture texture) => _controller.GetOrCreateImageBinding(GraphicsDevice.ResourceFactory, texture);
 
         /// <summary>
         /// Should be called in a while loop, with ImgGui draw calls in the body of the loop.
@@ -148,7 +144,7 @@ namespace Ae.ImGuiBootstrapper
             float deltaTime = currentTime - _lastTime;
             _lastTime = currentTime;
 
-            _controller.StartFrame(deltaTime / 1000, Window.PumpEvents());
+            Renderer.StartFrame(deltaTime / 1000, Window.PumpEvents());
             _startFrame = false;
         }
 
@@ -177,12 +173,12 @@ namespace Ae.ImGuiBootstrapper
 
         private void EndFrameInternal(ref Vector3 backgroundColor)
         {
-            _controller.EndFrame();
+            Renderer.EndFrame();
 
             _cl.Begin();
             _cl.SetFramebuffer(GraphicsDevice.MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, new RgbaFloat(backgroundColor.X, backgroundColor.Y, backgroundColor.Z, 1f));
-            _controller.Render(_cl);
+            Renderer.Render(_cl);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
@@ -196,7 +192,7 @@ namespace Ae.ImGuiBootstrapper
         public void Dispose()
         {
             GraphicsDevice.WaitForIdle();
-            _controller.Dispose();
+            Renderer.Dispose();
             _cl.Dispose();
             GraphicsDevice.Dispose();
         }
