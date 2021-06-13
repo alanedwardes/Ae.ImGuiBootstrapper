@@ -15,9 +15,11 @@ namespace Ae.ImGuiBootstrapper.TextureSample
 
             var image = new ImageSharpTexture("wibble.png");
 
+            // Example with a Texture object (basic)
             using var texture1 = image.CreateDeviceTexture(window.GraphicsDevice, window.GraphicsDevice.ResourceFactory);
             var textureId1 = window.Renderer.CreateTextureResources(texture1);
 
+            // Example with a TextureView object (advanced)
             using var texture2 = image.CreateDeviceTexture(window.GraphicsDevice, window.GraphicsDevice.ResourceFactory);
             using var textureView2 = window.GraphicsDevice.ResourceFactory.CreateTextureView(texture2);
             var textureId2 = window.Renderer.CreateTextureViewResources(textureView2);
@@ -33,6 +35,9 @@ namespace Ae.ImGuiBootstrapper.TextureSample
                 ImGui.End();
             }
 
+            // This happens autimatically when the window is disposed of,
+            // but must be called explicitly to dispose resources
+            // associated with the texture or texture view at runtime
             window.Renderer.DestroyTextureResources(texture1);
             window.Renderer.DestroyTextureViewResources(textureView2);
         }

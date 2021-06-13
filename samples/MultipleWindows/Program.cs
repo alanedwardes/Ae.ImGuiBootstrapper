@@ -16,7 +16,7 @@ namespace Ae.ImGuiBootstrapper.MultipleWindows
 
             var backgroundColor = new Vector3(0.45f, 0.55f, 0.6f);
 
-            while (window1.IsOpen || window2.IsOpen)
+            while (window1.Window.Exists || window2.Window.Exists)
             {
                 if (window1.Loop(ref backgroundColor))
                 {

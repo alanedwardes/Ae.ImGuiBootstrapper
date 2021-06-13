@@ -106,13 +106,8 @@ namespace Ae.ImGuiBootstrapper
 
             StartFrameInternal();
             _loopedOnce = true;
-            return IsOpen;
+            return Window.Exists;
         }
-
-        /// <summary>
-        /// Determines whether the window is open or has been closed.
-        /// </summary>
-        public bool IsOpen => Window.Exists;
 
         /// <summary>
         /// Start a new frame. This call should be followed by ImgGui draw calls.
@@ -134,7 +129,7 @@ namespace Ae.ImGuiBootstrapper
 
         private void StartFrameInternal()
         {
-            if (!IsOpen)
+            if (!Window.Exists)
             {
                 return;
             }
@@ -153,7 +148,7 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public void EndFrame(ref Vector3 backgroundColor)
         {
-            if (!IsOpen)
+            if (!Window.Exists)
             {
                 return;
             }
