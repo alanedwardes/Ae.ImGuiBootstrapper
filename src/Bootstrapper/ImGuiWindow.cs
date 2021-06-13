@@ -15,14 +15,17 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Provides access to the underlying Veldrid <see cref="Veldrid.GraphicsDevice"/>.
         /// </summary>
+        /// <value>Gets the underlying <see cref="Veldrid.GraphicsDevice"/> which represents the graphics device used to render the ImGui content.</value>
         public GraphicsDevice GraphicsDevice { get; }
         /// <summary>
         /// Provides access to the underlying <see cref="Sdl2Window"/>.
         /// </summary>
+        /// <value>Gets the underlying <see cref="Sdl2Window"/> which represents the OS window in use.</value>
         public Sdl2Window Window { get; }
         /// <summary>
         /// Provides access to the underlying <see cref="ImGuiRenderer"/>.
         /// </summary>
+        /// <value>Gets the underlying <see cref="ImGuiRenderer"/> which is responsible for rendering ImGui content.</value>
         public ImGuiRenderer Renderer { get; }
 
         private readonly CommandList _cl;
@@ -39,18 +42,18 @@ namespace Ae.ImGuiBootstrapper
             Window.Resized += () =>
             {
                 GraphicsDevice.MainSwapchain.Resize((uint)Window.Width, (uint)Window.Height);
-                Renderer.WindowResized(Window.Width, Window.Height);
+                Renderer.WindowResized((uint)Window.Width, (uint)Window.Height);
             };
 
             _cl = GraphicsDevice.ResourceFactory.CreateCommandList();
-            Renderer = new ImGuiRenderer(GraphicsDevice, Window.Width, Window.Height);
+            Renderer = new ImGuiRenderer(GraphicsDevice, (uint)Window.Width, (uint)Window.Height);
         }
 
         /// <summary>
         /// Create a new window using the specified <see cref="Sdl2Window"/> and <see cref="Veldrid.GraphicsDevice"/>.
         /// </summary>
-        /// <param name="window"></param>
-        /// <param name="graphicsDevice"></param>
+        /// <param name="window">The underlying <see cref="Sdl2Window"/> to use as the host window.</param>
+        /// <param name="graphicsDevice">The underlying <see cref="GraphicsDevice"/> to create resources and render against.</param>
         public ImGuiWindow(Sdl2Window window, GraphicsDevice graphicsDevice) : this((window, graphicsDevice))
         {
         }
@@ -58,11 +61,11 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Create a new window on which to render ImgGui elements.
         /// </summary>
-        /// <param name="windowTitle"></param>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
+        /// <param name="windowTitle">The title of the window.</param>
+        /// <param name="x">The horizontal position of the window on the desktop.</param>
+        /// <param name="y">The vertical position of the window on the desktop.</param>
+        /// <param name="width">The width of the window on the desktop.</param>
+        /// <param name="height">The height of the window on the desktop.</param>
         public ImGuiWindow(string windowTitle, int x = 50, int y = 50, int width = 1280, int height = 720) : this(new WindowCreateInfo(x, y, width, height, WindowState.Normal, windowTitle))
         {
         }
@@ -70,7 +73,7 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Create a new window on which to render ImgGui elements using the specified <see cref="WindowCreateInfo"/>.
         /// </summary>
-        /// <param name="windowCreateInfo"></param>
+        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo"/> to use to construct this window.</param>
         public ImGuiWindow(WindowCreateInfo windowCreateInfo) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, CreateDefaultDeviceOptions()))
         {
         }
@@ -78,8 +81,8 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Create a new window on which to render ImgGui elements.
         /// </summary>
-        /// <param name="windowCreateInfo"></param>
-        /// <param name="graphicsDeviceOptions"></param>
+        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo"/> to use to construct this window.</param>
+        /// <param name="graphicsDeviceOptions">The Veldrid <see cref="GraphicsDeviceOptions"/> to use to construct the underlying graphics device.</param>
         public ImGuiWindow(WindowCreateInfo windowCreateInfo, GraphicsDeviceOptions graphicsDeviceOptions) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, graphicsDeviceOptions))
         {
         }
@@ -94,9 +97,10 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Should be called in a while loop, with ImgGui draw calls in the body of the loop.
+        /// This method cannot be used with <see cref="StartFrame"/> and <see cref="EndFrame(ref Vector3)"/>.
         /// </summary>
-        /// <param name="backgroundColor"></param>
-        /// <returns></returns>
+        /// <param name="backgroundColor">The background colour to use.</param>
+        /// <returns>A boolean representing whether the underlying <see cref="Sdl2Window"/> still exists.</returns>
         public bool Loop(ref Vector3 backgroundColor)
         {
             if (_loopedOnce)
@@ -111,6 +115,7 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Start a new frame. This call should be followed by ImgGui draw calls.
+        /// This method cannot be used with <see cref="Loop(ref Vector3)"/>.
         /// </summary>
         public void StartFrame()
         {
@@ -145,7 +150,9 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// End the current frame after all ImGui draw calls.
+        /// This method cannot be used with <see cref="Loop(ref Vector3)"/>.
         /// </summary>
+        /// <param name="backgroundColor">The background colour to use.</param>
         public void EndFrame(ref Vector3 backgroundColor)
         {
             if (!Window.Exists)
@@ -181,9 +188,7 @@ namespace Ae.ImGuiBootstrapper
             _startFrame = true;
         }
 
-        /// <summary>
-        /// Dispose of the low-level resources used by the window.
-        /// </summary>
+        /// <inheritdoc/>
         public void Dispose()
         {
             GraphicsDevice.WaitForIdle();

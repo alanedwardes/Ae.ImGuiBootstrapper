@@ -64,9 +64,12 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Constructs a new ImGuiController using the specified <see cref="GraphicsDevice"/>, at the specified width and height.
         /// </summary>
-        public ImGuiRenderer(GraphicsDevice gd, int width, int height)
+        /// <param name="graphicsDevice">The Veldrid <see cref="GraphicsDevice"/> to use.</param>
+        /// <param name="width">The width of the window.</param>
+        /// <param name="height">The height of the window.</param>
+        public ImGuiRenderer(GraphicsDevice graphicsDevice, uint width, uint height)
         {
-            _graphicsDevice = gd;
+            _graphicsDevice = graphicsDevice;
 
             ImGui.SetCurrentContext(_context);
             _io = ImGui.GetIO();
@@ -128,9 +131,9 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Should be called when the window is resized.
         /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        public void WindowResized(int width, int height)
+        /// <param name="width">The new window width.</param>
+        /// <param name="height">The new window height.</param>
+        public void WindowResized(uint width, uint height)
         {
             _io.DisplaySize = new Vector2(width, height) / _scaleFactor;
 
@@ -147,6 +150,7 @@ namespace Ae.ImGuiBootstrapper
         /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
         /// The supplied <see cref="TextureView"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
+        /// <param name="textureView">The Veldrid <see cref="TextureView"/> to bind.</param>
         public IntPtr CreateTextureViewResources(TextureView textureView)
         {
             if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
@@ -166,6 +170,7 @@ namespace Ae.ImGuiBootstrapper
         /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
         /// The supplied <see cref="Texture"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
+        /// <param name="texture">The Veldrid <see cref="Texture"/> to bind.</param>
         public IntPtr CreateTextureResources(Texture texture)
         {
             if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
@@ -181,7 +186,7 @@ namespace Ae.ImGuiBootstrapper
         /// Destroys the resources associated with the <see cref="Texture"/> which was previously bound
         /// using <see cref="CreateTextureResources(Texture)"/>. This will NOT dispose the <see cref="Texture"/>.
         /// </summary>
-        /// <param name="texture"></param>
+        /// <param name="texture">The Veldrid <see cref="Texture"/> for which to destroy associated resources.</param>
         public void DestroyTextureResources(Texture texture)
         {
             if (_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
@@ -198,7 +203,7 @@ namespace Ae.ImGuiBootstrapper
         /// Destroys the resources associated with the <see cref="TextureView"/> which was previously bound
         /// using <see cref="CreateTextureViewResources(TextureView)"/>. This will NOT dispose the <see cref="TextureView"/>.
         /// </summary>
-        /// <param name="textureView"></param>
+        /// <param name="textureView">The Veldrid <see cref="TextureView"/> for which to destroy associated resources.</param>
         public void DestroyTextureViewResources(TextureView textureView)
         {
             if (_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr pointer))
@@ -287,7 +292,8 @@ namespace Ae.ImGuiBootstrapper
         /// Renders the ImGui draw list data. A <see cref="CommandList"/> is needed to submit drawing and resource update commands.
         /// This may create new DeviceBuffers if the size of vertex or index data has increased beyond the capacity of the existing buffers.
         /// </summary>
-        public void Render(CommandList cl)
+        /// <param name="commandList">The Veldrid <see cref="CommandList"/> to issue draw commands into.</param>
+        public void Render(CommandList commandList)
         {
             var currentContext = ImGui.GetCurrentContext();
             if (currentContext != _context)
@@ -299,12 +305,14 @@ namespace Ae.ImGuiBootstrapper
             ImGui.EndFrame();
 
             ImGui.Render();
-            RenderImDrawData(ImGui.GetDrawData(), cl);
+            RenderImDrawData(ImGui.GetDrawData(), commandList);
         }
 
         /// <summary>
         /// Process input, and start the ImGui frame using <see cref="ImGui.NewFrame"/>.
         /// </summary>
+        /// <param name="deltaSeconds">The time between this frame and the last frame in seconds.</param>
+        /// <param name="snapshot">The Veldrid <see cref="InputSnapshot"/> to process input from.</param>
         public void StartFrame(float deltaSeconds, InputSnapshot snapshot)
         {
             _io.DisplayFramebufferScale = _scaleFactor;

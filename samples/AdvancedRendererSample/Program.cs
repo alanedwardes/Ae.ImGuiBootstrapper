@@ -25,12 +25,12 @@ namespace Ae.ImGuiBootstrapper.AdvancedRendererSample
             var graphicsDeviceOptions = new GraphicsDeviceOptions(false, null, vsync, ResourceBindingModel.Improved, true, true);
             GraphicsDevice graphicsDevice = VeldridStartup.CreateGraphicsDevice(sdl2Window, graphicsDeviceOptions, graphicsBackend);
 
-            var renderer = new ImGuiRenderer(graphicsDevice, sdl2Window.Width, sdl2Window.Height);
+            var renderer = new ImGuiRenderer(graphicsDevice, (uint)sdl2Window.Width, (uint)sdl2Window.Height);
 
             sdl2Window.Resized += () =>
             {
                 graphicsDevice.MainSwapchain.Resize((uint)sdl2Window.Width, (uint)sdl2Window.Height);
-                renderer.WindowResized(sdl2Window.Width, sdl2Window.Height);
+                renderer.WindowResized((uint)sdl2Window.Width, (uint)sdl2Window.Height);
             };
 
             var commandList = graphicsDevice.ResourceFactory.CreateCommandList();
