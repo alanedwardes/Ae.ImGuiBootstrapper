@@ -15,20 +15,20 @@ namespace Ae.ImGuiBootstrapper
     /// </summary>
     public sealed class ImGuiRenderer : IDisposable
     {
-        private readonly GraphicsDevice _gd;
+        private readonly GraphicsDevice _graphicsDevice;
 
         // Veldrid objects
         private DeviceBuffer _vertexBuffer;
         private DeviceBuffer _indexBuffer;
-        private DeviceBuffer _projMatrixBuffer;
+        private readonly DeviceBuffer _projectionMatrixBuffer;
         private Texture _fontTexture;
         private TextureView _fontTextureView;
-        private Shader _vertexShader;
-        private Shader _fragmentShader;
-        private ResourceLayout _layout;
-        private ResourceLayout _textureLayout;
-        private Pipeline _pipeline;
-        private ResourceSet _mainResourceSet;
+        private readonly Shader _vertexShader;
+        private readonly Shader _fragmentShader;
+        private readonly ResourceLayout _layout;
+        private readonly ResourceLayout _textureLayout;
+        private readonly Pipeline _pipeline;
+        private readonly ResourceSet _mainResourceSet;
         private ResourceSet _fontTextureResourceSet;
 
         private readonly IntPtr _fontAtlasID = (IntPtr)1;
@@ -38,17 +38,27 @@ namespace Ae.ImGuiBootstrapper
         private bool _winKeyDown;
         private bool _isFontInitialised;
 
-        private int _windowWidth;
-        private int _windowHeight;
         private readonly IntPtr _context = ImGui.CreateContext();
         private readonly ImGuiIOPtr _io;
         private Vector2 _scaleFactor = Vector2.One;
 
-        // Image trackers
+        /// <summary>
+        /// Represents a map of <see cref="TextureView"/> to ImGui <see cref="IntPtr"/> objects. These may or may not be owned by this component
+        /// so will NOT be disposed of in <see cref="Dispose"/>.
+        /// </summary>
         private readonly IDictionary<TextureView, IntPtr> _textureViewToPointerLookup = new Dictionary<TextureView, IntPtr>();
+
+        /// <summary>
+        /// Contains a map of <see cref="Texture"/> owned by the caller, and automatically created <see cref="TextureView"/> objects.
+        /// The <see cref="TextureView"/> objects will be disposed in <see cref="Dispose"/> (but the <see cref="Texture"/> objects won't be).
+        /// </summary>
         private readonly IDictionary<Texture, TextureView> _textureToTextureViewLookup = new Dictionary<Texture, TextureView>();
+
+        /// <summary>
+        /// Contains a map of ImGui <see cref="IntPtr"/> objects to <see cref="ResourceSet"/> objects. The <see cref="ResourceSet"/> objects will be disposed in <see cref="Dispose"/>.
+        /// </summary>
         private readonly IDictionary<IntPtr, ResourceSet> _pointerToResourceSetLookup = new Dictionary<IntPtr, ResourceSet>();
-        private readonly IList<IDisposable> _ownedResources = new List<IDisposable>();
+
         private int _lastAssignedID = 100;
 
         /// <summary>
@@ -56,12 +66,60 @@ namespace Ae.ImGuiBootstrapper
         /// </summary>
         public ImGuiRenderer(GraphicsDevice gd, int width, int height)
         {
-            _gd = gd;
+            _graphicsDevice = gd;
 
             ImGui.SetCurrentContext(_context);
             _io = ImGui.GetIO();
 
-            CreateDeviceResources();
+            // Create a vertex buffer
+            _vertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+            _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
+
+            // Create an index buffer
+            _indexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+            _indexBuffer.Name = "ImGui.NET Index Buffer";
+
+            // Create a buffer for the projection matrix
+            _projectionMatrixBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+            _projectionMatrixBuffer.Name = "ImGui.NET Projection Buffer";
+
+            // Load the simple vertex and fragment shaders
+            byte[] vertexShaderBytes = LoadEmbeddedShaderCode(_graphicsDevice.ResourceFactory, "imgui-vertex", ShaderStages.Vertex);
+            byte[] fragmentShaderBytes = LoadEmbeddedShaderCode(_graphicsDevice.ResourceFactory, "imgui-frag", ShaderStages.Fragment);
+            _vertexShader = _graphicsDevice.ResourceFactory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes, _graphicsDevice.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
+            _fragmentShader = _graphicsDevice.ResourceFactory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, _graphicsDevice.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
+
+            // Define the vertex data layouts
+            VertexLayoutDescription[] vertexLayouts = new VertexLayoutDescription[]
+            {
+                new VertexLayoutDescription(
+                    new VertexElementDescription("in_position", VertexElementSemantic.Position, VertexElementFormat.Float2),
+                    new VertexElementDescription("in_texCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+                    new VertexElementDescription("in_color", VertexElementSemantic.Color, VertexElementFormat.Byte4_Norm))
+            };
+
+            _layout = _graphicsDevice.ResourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
+                new ResourceLayoutElementDescription("ProjectionMatrixBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
+                new ResourceLayoutElementDescription("MainSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
+
+            _textureLayout = _graphicsDevice.ResourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
+                new ResourceLayoutElementDescription("MainTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
+
+            // Create a graphics pipeline
+            _pipeline = _graphicsDevice.ResourceFactory.CreateGraphicsPipeline(new GraphicsPipelineDescription
+            {
+                BlendState = BlendStateDescription.SingleAlphaBlend,
+                DepthStencilState = new DepthStencilStateDescription(false, false, ComparisonKind.Always),
+                RasterizerState = new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, true, true),
+                PrimitiveTopology = PrimitiveTopology.TriangleList,
+                ShaderSet = new ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
+                ResourceLayouts = new ResourceLayout[] { _layout, _textureLayout },
+                Outputs = _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
+                ResourceBindingModel = ResourceBindingModel.Default
+            });
+
+            _mainResourceSet = _graphicsDevice.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_layout, _projectionMatrixBuffer, _graphicsDevice.PointSampler));
+
             SetKeyMappings();
 
             WindowResized(width, height);
@@ -74,56 +132,10 @@ namespace Ae.ImGuiBootstrapper
         /// <param name="height"></param>
         public void WindowResized(int width, int height)
         {
-            _windowWidth = width;
-            _windowHeight = height;
-            _io.DisplaySize = new Vector2(_windowWidth, _windowHeight) / _scaleFactor;
+            _io.DisplaySize = new Vector2(width, height) / _scaleFactor;
 
             // Update the projection matrix
-            _gd.UpdateBuffer(_projMatrixBuffer, 0, Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
-        }
-
-        private void CreateDeviceResources()
-        {
-            ResourceFactory factory = _gd.ResourceFactory;
-            _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
-            _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
-            _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
-            _indexBuffer.Name = "ImGui.NET Index Buffer";
-
-            _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
-            _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
-
-            byte[] vertexShaderBytes = LoadEmbeddedShaderCode(_gd.ResourceFactory, "imgui-vertex", ShaderStages.Vertex);
-            byte[] fragmentShaderBytes = LoadEmbeddedShaderCode(_gd.ResourceFactory, "imgui-frag", ShaderStages.Fragment);
-            _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
-            _fragmentShader = factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
-
-            VertexLayoutDescription[] vertexLayouts = new VertexLayoutDescription[]
-            {
-                new VertexLayoutDescription(
-                    new VertexElementDescription("in_position", VertexElementSemantic.Position, VertexElementFormat.Float2),
-                    new VertexElementDescription("in_texCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
-                    new VertexElementDescription("in_color", VertexElementSemantic.Color, VertexElementFormat.Byte4_Norm))
-            };
-
-            _layout = factory.CreateResourceLayout(new ResourceLayoutDescription(
-                new ResourceLayoutElementDescription("ProjectionMatrixBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-                new ResourceLayoutElementDescription("MainSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
-            _textureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
-                new ResourceLayoutElementDescription("MainTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
-
-            GraphicsPipelineDescription pd = new GraphicsPipelineDescription(
-                BlendStateDescription.SingleAlphaBlend,
-                new DepthStencilStateDescription(false, false, ComparisonKind.Always),
-                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, true, true),
-                PrimitiveTopology.TriangleList,
-                new ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
-                new ResourceLayout[] { _layout, _textureLayout },
-                _gd.MainSwapchain.Framebuffer.OutputDescription,
-                ResourceBindingModel.Default);
-            _pipeline = factory.CreateGraphicsPipeline(ref pd);
-
-            _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer, _gd.PointSampler));
+            _graphicsDevice.UpdateBuffer(_projectionMatrixBuffer, 0, Matrix4x4.CreateOrthographicOffCenter(0f, _io.DisplaySize.X, _io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
         }
 
         private IntPtr GetNextImGuiBindingID()
@@ -132,36 +144,34 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Gets or creates a handle for a texture to be drawn with ImGui.
-        /// Pass the returned handle to Image() or ImageButton().
+        /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
+        /// The supplied <see cref="TextureView"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
         public IntPtr CreateTextureViewResources(TextureView textureView)
         {
             if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
             {
-                ResourceSet resourceSet = _gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, textureView));
+                ResourceSet resourceSet = _graphicsDevice.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, textureView));
 
                 binding = GetNextImGuiBindingID();
 
                 _textureViewToPointerLookup.Add(textureView, binding);
                 _pointerToResourceSetLookup.Add(binding, resourceSet);
-                _ownedResources.Add(resourceSet);
             }
 
             return binding;
         }
 
         /// <summary>
-        /// Gets or creates a handle for a texture to be drawn with ImGui.
-        /// Pass the returned handle to Image() or ImageButton().
+        /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
+        /// The supplied <see cref="Texture"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
         public IntPtr CreateTextureResources(Texture texture)
         {
             if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
             {
-                textureView = _gd.ResourceFactory.CreateTextureView(texture);
+                textureView = _graphicsDevice.ResourceFactory.CreateTextureView(texture);
                 _textureToTextureViewLookup.Add(texture, textureView);
-                _ownedResources.Add(textureView);
             }
 
             return CreateTextureViewResources(textureView);
@@ -169,7 +179,7 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Destroys the resources associated with the <see cref="Texture"/> which was previously bound
-        /// using <see cref="CreateTextureResources(Texture)"/>.
+        /// using <see cref="CreateTextureResources(Texture)"/>. This will NOT dispose the <see cref="Texture"/>.
         /// </summary>
         /// <param name="texture"></param>
         public void DestroyTextureResources(Texture texture)
@@ -186,7 +196,7 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Destroys the resources associated with the <see cref="TextureView"/> which was previously bound
-        /// using <see cref="CreateTextureViewResources(TextureView)"/>.
+        /// using <see cref="CreateTextureViewResources(TextureView)"/>. This will NOT dispose the <see cref="TextureView"/>.
         /// </summary>
         /// <param name="textureView"></param>
         public void DestroyTextureViewResources(TextureView textureView)
@@ -213,7 +223,6 @@ namespace Ae.ImGuiBootstrapper
             _pointerToResourceSetLookup[pointer].Dispose();
             _textureViewToPointerLookup.Remove(textureView);
             _pointerToResourceSetLookup.Remove(pointer);
-            _ownedResources.Remove(textureView);
         }
 
         private byte[] LoadEmbeddedShaderCode(ResourceFactory factory, string name, ShaderStages stage)
@@ -262,12 +271,12 @@ namespace Ae.ImGuiBootstrapper
             _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
             _io.Fonts.SetTexID(_fontAtlasID);
 
-            _fontTexture = _gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
+            _fontTexture = _graphicsDevice.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
             _fontTexture.Name = "ImGui.NET Font Texture";
-            _gd.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
-            _fontTextureView = _gd.ResourceFactory.CreateTextureView(_fontTexture);
+            _graphicsDevice.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
+            _fontTextureView = _graphicsDevice.ResourceFactory.CreateTextureView(_fontTexture);
 
-            _fontTextureResourceSet = _gd.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
+            _fontTextureResourceSet = _graphicsDevice.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
 
             _pointerToResourceSetLookup[_fontAtlasID] = _fontTextureResourceSet;
 
@@ -427,15 +436,15 @@ namespace Ae.ImGuiBootstrapper
             uint totalVBSize = (uint)(drawData.TotalVtxCount * Unsafe.SizeOf<ImDrawVert>());
             if (totalVBSize > _vertexBuffer.SizeInBytes)
             {
-                _gd.DisposeWhenIdle(_vertexBuffer);
-                _vertexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVBSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+                _graphicsDevice.DisposeWhenIdle(_vertexBuffer);
+                _vertexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVBSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             }
 
             uint totalIBSize = (uint)(drawData.TotalIdxCount * sizeof(ushort));
             if (totalIBSize > _indexBuffer.SizeInBytes)
             {
-                _gd.DisposeWhenIdle(_indexBuffer);
-                _indexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+                _graphicsDevice.DisposeWhenIdle(_indexBuffer);
+                _indexBuffer = _graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIBSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             }
 
             cl.SetVertexBuffer(0, _vertexBuffer);
@@ -491,9 +500,10 @@ namespace Ae.ImGuiBootstrapper
         {
             _vertexBuffer.Dispose();
             _indexBuffer.Dispose();
-            _projMatrixBuffer.Dispose();
+            _projectionMatrixBuffer.Dispose();
             _fontTexture.Dispose();
             _fontTextureView.Dispose();
+            _fontTextureResourceSet.Dispose();
             _vertexShader.Dispose();
             _fragmentShader.Dispose();
             _layout.Dispose();
@@ -501,7 +511,12 @@ namespace Ae.ImGuiBootstrapper
             _pipeline.Dispose();
             _mainResourceSet.Dispose();
 
-            foreach (IDisposable resource in _ownedResources)
+            foreach (IDisposable resource in _textureToTextureViewLookup.Values)
+            {
+                resource.Dispose();
+            }
+
+            foreach (IDisposable resource in _pointerToResourceSetLookup.Values)
             {
                 resource.Dispose();
             }

@@ -35,9 +35,8 @@ namespace Ae.ImGuiBootstrapper.TextureSample
                 ImGui.End();
             }
 
-            // This happens autimatically when the window is disposed of,
-            // but must be called explicitly to dispose resources
-            // associated with the texture or texture view at runtime
+            // If swapping textures at runtime, these methods must be called
+            // to release the resources associated with a Texture or TextureView.
             window.Renderer.DestroyTextureResources(texture1);
             window.Renderer.DestroyTextureViewResources(textureView2);
         }
