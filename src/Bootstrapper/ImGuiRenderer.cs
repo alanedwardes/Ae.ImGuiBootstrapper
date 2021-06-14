@@ -43,28 +43,28 @@ namespace Ae.ImGuiBootstrapper
         private Vector2 _scaleFactor = Vector2.One;
 
         /// <summary>
-        /// Represents a map of <see cref="TextureView"/> to ImGui <see cref="IntPtr"/> objects. These may or may not be owned by this component
+        /// Represents a map of <see cref="TextureView">TextureView</see> to ImGui <see cref="IntPtr"/> objects. These may or may not be owned by this component
         /// so will NOT be disposed of in <see cref="Dispose"/>.
         /// </summary>
         private readonly IDictionary<TextureView, IntPtr> _textureViewToPointerLookup = new Dictionary<TextureView, IntPtr>();
 
         /// <summary>
-        /// Contains a map of <see cref="Texture"/> owned by the caller, and automatically created <see cref="TextureView"/> objects.
-        /// The <see cref="TextureView"/> objects will be disposed in <see cref="Dispose"/> (but the <see cref="Texture"/> objects won't be).
+        /// Contains a map of <see cref="Texture">Texture</see> owned by the caller, and automatically created <see cref="TextureView">TextureView</see> objects.
+        /// The <see cref="TextureView">TextureView</see> objects will be disposed in <see cref="Dispose"/> (but the <see cref="Texture">Texture</see> objects won't be).
         /// </summary>
         private readonly IDictionary<Texture, TextureView> _textureToTextureViewLookup = new Dictionary<Texture, TextureView>();
 
         /// <summary>
-        /// Contains a map of ImGui <see cref="IntPtr"/> objects to <see cref="ResourceSet"/> objects. The <see cref="ResourceSet"/> objects will be disposed in <see cref="Dispose"/>.
+        /// Contains a map of ImGui <see cref="IntPtr"/> objects to <see cref="ResourceSet">ResourceSet</see> objects. The <see cref="ResourceSet">ResourceSet</see> objects will be disposed in <see cref="Dispose"/>.
         /// </summary>
         private readonly IDictionary<IntPtr, ResourceSet> _pointerToResourceSetLookup = new Dictionary<IntPtr, ResourceSet>();
 
         private int _lastAssignedID = 100;
 
         /// <summary>
-        /// Constructs a new ImGuiController using the specified <see cref="GraphicsDevice"/>, at the specified width and height.
+        /// Constructs a new ImGuiController using the specified <see cref="GraphicsDevice">GraphicsDevice</see>, at the specified width and height.
         /// </summary>
-        /// <param name="graphicsDevice">The Veldrid <see cref="GraphicsDevice"/> to use.</param>
+        /// <param name="graphicsDevice">The Veldrid <see cref="GraphicsDevice">GraphicsDevice</see> to use.</param>
         /// <param name="width">The width of the window.</param>
         /// <param name="height">The height of the window.</param>
         public ImGuiRenderer(GraphicsDevice graphicsDevice, uint width, uint height)
@@ -148,9 +148,9 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
-        /// The supplied <see cref="TextureView"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
+        /// The supplied <see cref="TextureView">TextureView</see> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
-        /// <param name="textureView">The Veldrid <see cref="TextureView"/> to bind.</param>
+        /// <param name="textureView">The Veldrid <see cref="TextureView">TextureView</see> to bind.</param>
         public IntPtr CreateTextureViewResources(TextureView textureView)
         {
             if (!_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr binding))
@@ -168,9 +168,9 @@ namespace Ae.ImGuiBootstrapper
 
         /// <summary>
         /// Gets or creates a handle for a texture to be drawn with ImGui. Pass the returned handle to Image() or ImageButton().
-        /// The supplied <see cref="Texture"/> resource will NOT be automatically disposed of, this is the responsibility of the caller.
+        /// The supplied <see cref="Texture">Texture</see> resource will NOT be automatically disposed of, this is the responsibility of the caller.
         /// </summary>
-        /// <param name="texture">The Veldrid <see cref="Texture"/> to bind.</param>
+        /// <param name="texture">The Veldrid <see cref="Texture">Texture</see> to bind.</param>
         public IntPtr CreateTextureResources(Texture texture)
         {
             if (!_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
@@ -183,10 +183,10 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Destroys the resources associated with the <see cref="Texture"/> which was previously bound
-        /// using <see cref="CreateTextureResources(Texture)"/>. This will NOT dispose the <see cref="Texture"/>.
+        /// Destroys the resources associated with the <see cref="Texture">Texture</see> which was previously bound
+        /// using <see cref="CreateTextureResources(Texture)"/>. This will NOT dispose the <see cref="Texture">Texture</see>.
         /// </summary>
-        /// <param name="texture">The Veldrid <see cref="Texture"/> for which to destroy associated resources.</param>
+        /// <param name="texture">The Veldrid <see cref="Texture">Texture</see> for which to destroy associated resources.</param>
         public void DestroyTextureResources(Texture texture)
         {
             if (_textureToTextureViewLookup.TryGetValue(texture, out TextureView textureView))
@@ -200,10 +200,10 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Destroys the resources associated with the <see cref="TextureView"/> which was previously bound
-        /// using <see cref="CreateTextureViewResources(TextureView)"/>. This will NOT dispose the <see cref="TextureView"/>.
+        /// Destroys the resources associated with the <see cref="TextureView">TextureView</see> which was previously bound
+        /// using <see cref="CreateTextureViewResources(TextureView)"/>. This will NOT dispose the <see cref="TextureView">TextureView</see>.
         /// </summary>
-        /// <param name="textureView">The Veldrid <see cref="TextureView"/> for which to destroy associated resources.</param>
+        /// <param name="textureView">The Veldrid <see cref="TextureView">TextureView</see> for which to destroy associated resources.</param>
         public void DestroyTextureViewResources(TextureView textureView)
         {
             if (_textureViewToPointerLookup.TryGetValue(textureView, out IntPtr pointer))
@@ -289,10 +289,10 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Renders the ImGui draw list data. A <see cref="CommandList"/> is needed to submit drawing and resource update commands.
+        /// Renders the ImGui draw list data. A <see cref="CommandList">CommandList</see> is needed to submit drawing and resource update commands.
         /// This may create new DeviceBuffers if the size of vertex or index data has increased beyond the capacity of the existing buffers.
         /// </summary>
-        /// <param name="commandList">The Veldrid <see cref="CommandList"/> to issue draw commands into.</param>
+        /// <param name="commandList">The Veldrid <see cref="CommandList">CommandList</see> to issue draw commands into.</param>
         public void Render(CommandList commandList)
         {
             var currentContext = ImGui.GetCurrentContext();
@@ -309,7 +309,7 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Process input, and start the ImGui frame using <see cref="ImGui.NewFrame"/>.
+        /// Process input, and start the ImGui frame using <see cref="ImGui.NewFrame">ImGui.NewFrame</see>.
         /// </summary>
         /// <param name="deltaSeconds">The time between this frame and the last frame in seconds.</param>
         /// <param name="snapshot">The Veldrid <see cref="InputSnapshot"/> to process input from.</param>
@@ -331,7 +331,7 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// End the ImGui frame using <see cref="ImGui.EndFrame"/>.
+        /// End the ImGui frame using <see cref="ImGui.EndFrame">ImGui.EndFrame</see>.
         /// </summary>
         public void EndFrame()
         {

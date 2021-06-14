@@ -13,14 +13,14 @@ namespace Ae.ImGuiBootstrapper
     public sealed class ImGuiWindow : IDisposable
     {
         /// <summary>
-        /// Provides access to the underlying Veldrid <see cref="Veldrid.GraphicsDevice"/>.
+        /// Provides access to the underlying Veldrid <see cref="Veldrid.GraphicsDevice">GraphicsDevice</see>.
         /// </summary>
         /// <value>Gets the underlying <see cref="Veldrid.GraphicsDevice"/> which represents the graphics device used to render the ImGui content.</value>
         public GraphicsDevice GraphicsDevice { get; }
         /// <summary>
-        /// Provides access to the underlying <see cref="Sdl2Window"/>.
+        /// Provides access to the underlying <see cref="Sdl2Window">Sdl2Window</see>.
         /// </summary>
-        /// <value>Gets the underlying <see cref="Sdl2Window"/> which represents the OS window in use.</value>
+        /// <value>Gets the underlying <see cref="Sdl2Window">Sdl2Window</see> which represents the OS window in use.</value>
         public Sdl2Window Window { get; }
         /// <summary>
         /// Provides access to the underlying <see cref="ImGuiRenderer"/>.
@@ -50,10 +50,10 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Create a new window using the specified <see cref="Sdl2Window"/> and <see cref="Veldrid.GraphicsDevice"/>.
+        /// Create a new window using the specified <see cref="Sdl2Window">Sdl2Window</see> and <see cref="Veldrid.GraphicsDevice">GraphicsDevice</see>.
         /// </summary>
-        /// <param name="window">The underlying <see cref="Sdl2Window"/> to use as the host window.</param>
-        /// <param name="graphicsDevice">The underlying <see cref="GraphicsDevice"/> to create resources and render against.</param>
+        /// <param name="window">The underlying <see cref="Sdl2Window">Sdl2Window</see> to use as the host window.</param>
+        /// <param name="graphicsDevice">The underlying <see cref="Veldrid.GraphicsDevice">GraphicsDevice</see> to create resources and render against.</param>
         public ImGuiWindow(Sdl2Window window, GraphicsDevice graphicsDevice) : this((window, graphicsDevice))
         {
         }
@@ -71,9 +71,9 @@ namespace Ae.ImGuiBootstrapper
         }
 
         /// <summary>
-        /// Create a new window on which to render ImgGui elements using the specified <see cref="WindowCreateInfo"/>.
+        /// Create a new window on which to render ImgGui elements using the specified <see cref="WindowCreateInfo">WindowCreateInfo</see>.
         /// </summary>
-        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo"/> to use to construct this window.</param>
+        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo">WindowCreateInfo</see> to use to construct this window.</param>
         public ImGuiWindow(WindowCreateInfo windowCreateInfo) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, CreateDefaultDeviceOptions()))
         {
         }
@@ -81,8 +81,8 @@ namespace Ae.ImGuiBootstrapper
         /// <summary>
         /// Create a new window on which to render ImgGui elements.
         /// </summary>
-        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo"/> to use to construct this window.</param>
-        /// <param name="graphicsDeviceOptions">The Veldrid <see cref="GraphicsDeviceOptions"/> to use to construct the underlying graphics device.</param>
+        /// <param name="windowCreateInfo">The Veldrid <see cref="WindowCreateInfo">WindowCreateInfo</see> to use to construct this window.</param>
+        /// <param name="graphicsDeviceOptions">The Veldrid <see cref="GraphicsDeviceOptions">GraphicsDeviceOptions</see> to use to construct the underlying graphics device.</param>
         public ImGuiWindow(WindowCreateInfo windowCreateInfo, GraphicsDeviceOptions graphicsDeviceOptions) : this(CreateWindowAndGraphicsDevice(windowCreateInfo, graphicsDeviceOptions))
         {
         }
@@ -100,7 +100,7 @@ namespace Ae.ImGuiBootstrapper
         /// This method cannot be used with <see cref="StartFrame"/> and <see cref="EndFrame(ref Vector3)"/>.
         /// </summary>
         /// <param name="backgroundColor">The background colour to use.</param>
-        /// <returns>A boolean representing whether the underlying <see cref="Sdl2Window"/> still exists.</returns>
+        /// <returns>A boolean representing whether the underlying <see cref="Sdl2Window">Sdl2Window</see> still exists.</returns>
         public bool Loop(ref Vector3 backgroundColor)
         {
             if (_loopedOnce)
