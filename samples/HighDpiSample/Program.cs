@@ -40,7 +40,7 @@ namespace Ae.ImGuiBootstrapper.Ae.ImGuiBootstrapper.HighDpiSample
         [DllImport("user32.dll")]
         internal static extern IntPtr MonitorFromWindow(IntPtr hwnd, MonitorOpts dwFlags);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll")]
         internal static extern bool SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiFlag);
     }
 
@@ -60,8 +60,23 @@ namespace Ae.ImGuiBootstrapper.Ae.ImGuiBootstrapper.HighDpiSample
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                //WindowsNative.SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
-                WindowsNative.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+                try
+                {
+                    // Only valid from Windows 10
+                    WindowsNative.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    try
+                    {
+                        // Only valid from Windows 8.1
+                        WindowsNative.SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
+                    }
+                    catch (EntryPointNotFoundException)
+                    {
+                        // We've exhausted all avenues
+                    }
+                }
             }
 
             using var window = new ImGuiWindow("ImGui.NET Sample Program");
