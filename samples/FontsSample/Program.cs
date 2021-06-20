@@ -47,6 +47,12 @@ namespace Ae.ImGuiBootstrapper.FontsSample
                     window.Renderer.RebuildFontTexture();
                 }
 
+                if (ImGui.Button("ProggyClean.ttf@13"))
+                {
+                    io.Fonts.AddFontDefault();
+                    window.Renderer.RebuildFontTexture();
+                }
+
                 if (ImGui.Button("Clear Fonts"))
                 {
                     // Fonts can also be removed while running
