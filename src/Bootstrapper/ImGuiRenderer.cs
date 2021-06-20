@@ -36,7 +36,6 @@ namespace Ae.ImGuiBootstrapper
         private bool _shiftDown;
         private bool _altDown;
         private bool _winKeyDown;
-        private bool _isFontInitialised;
 
         private readonly IntPtr _context = ImGui.CreateContext();
         private readonly ImGuiIOPtr _io;
@@ -271,16 +270,24 @@ namespace Ae.ImGuiBootstrapper
             }
         }
         
-        private void RecreateFontDeviceTexture()
+        /// <summary>
+        /// Rebuild the underlying font texture after a font texture change (do not call every frame).
+        /// Will be called automatically to generate the initial font texture, but must be called manually after subsequent changes.
+        /// </summary>
+        public void RebuildFontTexture()
         {
             _io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
             _io.Fonts.SetTexID(_fontAtlasID);
 
+            _fontTexture?.Dispose();
             _fontTexture = _graphicsDevice.ResourceFactory.CreateTexture(TextureDescription.Texture2D((uint)width, (uint)height, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled));
             _fontTexture.Name = "ImGui.NET Font Texture";
             _graphicsDevice.UpdateTexture(_fontTexture, pixels, (uint)(bytesPerPixel * width * height), 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
+
+            _fontTextureView?.Dispose();
             _fontTextureView = _graphicsDevice.ResourceFactory.CreateTextureView(_fontTexture);
 
+            _fontTextureResourceSet?.Dispose();
             _fontTextureResourceSet = _graphicsDevice.ResourceFactory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
 
             _pointerToResourceSetLookup[_fontAtlasID] = _fontTextureResourceSet;
@@ -320,10 +327,9 @@ namespace Ae.ImGuiBootstrapper
 
             UpdateImGuiInput(snapshot);
 
-            if (!_isFontInitialised)
+            if (_io.Fonts.TexID == IntPtr.Zero)
             {
-                RecreateFontDeviceTexture();
-                _isFontInitialised = true;
+                RebuildFontTexture();
             }
 
             ImGui.SetCurrentContext(_context);
